@@ -137,8 +137,10 @@ const App: React.FC = () => {
 
   const performAiAnalysis = async (file: File, workflowStr: string, promptStr: string, hash: string) => {
       // Ensure key is ready before starting
-      // Use state directly to avoid any shim latency
-      if (!localApiKey || !localApiKey.startsWith('AIza')) {
+      // Retrieve key directly from localStorage to avoid stale state closures
+      const apiKey = localStorage.getItem('gemini_api_key');
+      
+      if (!apiKey || !apiKey.startsWith('AIza')) {
           setHasApiKey(false);
           setIsSettingsOpen(true);
           return;
@@ -176,7 +178,7 @@ const App: React.FC = () => {
         localStorage.setItem('gemini_api_key', key);
         // If we have a file loaded and are currently in an offline/partial state, trigger AI now
         if (currentFile && metadata && currentFileHash) {
-            // Slight delay to ensure state updates if needed, though usually strict mode handles it
+            // Slight delay to ensure localStorage propagation and state updates
             setTimeout(() => {
                 const workflowStr = JSON.stringify(metadata.workflow || {});
                 const promptStr = JSON.stringify(metadata.prompt || {});

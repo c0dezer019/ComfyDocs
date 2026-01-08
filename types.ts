@@ -14,7 +14,10 @@ export interface QualityIssue {
   description: string;
   severity: 'Critical' | 'Major' | 'Minor';
   score: number; // 1-10 impact rating
-  suggestedFix?: string; // Specific fix linked to this issue
+  confidence?: number; // 0-100 percentage of accuracy/recurrence
+  passCount?: number; // Number of passes used to determine confidence
+  suggestedFixes?: string[]; // Specific fixes linked to this issue
+  suggestedFix?: string; // Legacy support
 }
 
 export interface PromptAnalysis {

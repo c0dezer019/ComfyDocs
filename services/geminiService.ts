@@ -46,9 +46,9 @@ export const generateSceneDocumentation = async (
                         description: { type: Type.STRING },
                         severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor'] },
                         score: { type: Type.NUMBER },
-                        suggestedFix: { type: Type.STRING }
+                        suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } }
                     },
-                    required: ["type", "description", "severity", "score", "suggestedFix"]
+                    required: ["type", "description", "severity", "score", "suggestedFixes"]
                 }
             }
         },
@@ -111,7 +111,7 @@ export const generateSceneDocumentation = async (
 
     Rules:
     - Identify specific quality issues (anatomy, texture, lighting).
-    - Provide a unique 'suggestedFix' for every quality issue.
+    - Provide unique 'suggestedFixes' for every quality issue.
     - Score adherence 1-10.
   `;
 
@@ -129,7 +129,17 @@ export const generateSceneDocumentation = async (
       },
     });
 
-    if (response.text) return JSON.parse(response.text) as SceneDocumentation;
+    if (response.text) {
+      const parsed = JSON.parse(response.text) as SceneDocumentation;
+      // Initialize confidence to 100 for single pass
+      if (parsed.qualityAnalysis?.issues) {
+        parsed.qualityAnalysis.issues.forEach(issue => {
+          issue.confidence = 100;
+          issue.passCount = 1;
+        });
+      }
+      return parsed;
+    }
     throw new Error("Empty response from AI");
   } catch (error: any) {
     if (error.message?.includes("Requested entity was not found") || error.message?.includes("API_KEY_NOT_FOUND")) {
@@ -138,6 +148,97 @@ export const generateSceneDocumentation = async (
     console.error("Gemini API Error:", error);
     throw new Error("Failed to generate documentation.");
   }
+};
+
+export const runConsensusQualityAnalysis = async (
+  imageBase64: string,
+  passCount: number
+): Promise<QualityIssue[]> => {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API_KEY_NOT_FOUND");
+  const ai = new GoogleGenAI({ apiKey });
+
+  // 1. Run N parallel passes using Flash (faster)
+  const passPromises = Array(passCount).fill(0).map(() => 
+    ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }, { text: "List all visual quality issues, artifacts, or anatomical errors in this image." }],
+      },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+             issues: { 
+               type: Type.ARRAY, 
+               items: { type: Type.OBJECT, properties: { description: { type: Type.STRING } } } 
+             }
+          }
+        }
+      }
+    })
+  );
+
+  const results = await Promise.all(passPromises);
+  const allRawIssues = results
+    .map(r => JSON.parse(r.text || "{}").issues || [])
+    .flat()
+    .map((i: any) => i.description)
+    .join("\n");
+
+  // 2. Run Judge Pass using Pro (smarter) to consolidate
+  const judgePrompt = `
+    You are a Consensus Algorithm. 
+    I ran ${passCount} separate analysis passes on an image. Here are the combined raw findings:
+    
+    ${allRawIssues}
+    
+    Task:
+    1. Group identical or semantically similar issues.
+    2. Calculate 'confidence' (percentage 0-100) based on how many times the issue appeared across the ${passCount} passes. (e.g. if found in 2 of 3 passes, confidence is 66).
+    3. Return a clean, consolidated list.
+    4. Provide specific technical 'suggestedFixes' for each issue.
+    5. Assign severity and a score penalty (0.1 - 2.0).
+  `;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: {
+      parts: [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }, { text: judgePrompt }],
+    },
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          issues: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                type: { type: Type.STRING },
+                description: { type: Type.STRING },
+                severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor'] },
+                score: { type: Type.NUMBER },
+                confidence: { type: Type.NUMBER, description: "Percentage 0-100" },
+                suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["type", "description", "severity", "score", "confidence", "suggestedFixes"]
+            }
+          }
+        }
+      },
+      thinkingConfig: { thinkingBudget: 1024 }
+    }
+  });
+
+  const parsed = JSON.parse(response.text || "{}");
+  return (parsed.issues || []).map((i: QualityIssue) => ({
+    ...i,
+    passCount: passCount,
+    id: crypto.randomUUID()
+  }));
 };
 
 export const generateIssueFix = async (
