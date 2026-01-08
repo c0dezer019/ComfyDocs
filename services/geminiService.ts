@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { SceneDocumentation, PromptAnalysis, QualityIssue } from "../types";
+import { SceneDocumentation, PromptAnalysis, QualityIssue, Annotation } from "../types";
 
 // Helper to get effective API key from local storage
 const getApiKey = (): string => {
@@ -46,7 +46,9 @@ export const generateSceneDocumentation = async (
                         description: { type: Type.STRING },
                         severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor', 'Note'] },
                         score: { type: Type.NUMBER },
-                        suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        box_2d: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "Optional [ymin, xmin, ymax, xmax] if issue is localized" },
+                        style: { type: Type.STRING, enum: ['box', 'paint'] }
                     },
                     required: ["type", "description", "severity", "score", "suggestedFixes"]
                 }
@@ -113,6 +115,7 @@ export const generateSceneDocumentation = async (
     - Identify specific quality issues (anatomy, texture, lighting).
     - Provide unique 'suggestedFixes' for every quality issue.
     - Score adherence 1-10.
+    - If an issue is localized to a specific area (like a hand, face, or artifact), provide the 2D bounding box (ymin, xmin, ymax, xmax).
   `;
 
   try {
@@ -200,6 +203,8 @@ export const runConsensusQualityAnalysis = async (
     3. Return a clean, consolidated list.
     4. Provide specific technical 'suggestedFixes' for each issue.
     5. Assign severity and a score penalty (0.1 - 2.0).
+    6. **CRITICAL**: For each issue, identify its location in the image. Provide a 2D bounding box [ymin, xmin, ymax, xmax] (normalized 0-1). If the issue is global (e.g. "blurry"), leave box_2d empty.
+    7. Select 'box' style for distinct objects, 'paint' for surface textures.
   `;
 
   const response = await ai.models.generateContent({
@@ -222,7 +227,9 @@ export const runConsensusQualityAnalysis = async (
                 severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor', 'Note'] },
                 score: { type: Type.NUMBER },
                 confidence: { type: Type.NUMBER, description: "Percentage 0-100" },
-                suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } }
+                suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                box_2d: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "[ymin, xmin, ymax, xmax]" },
+                style: { type: Type.STRING, enum: ['box', 'paint'] }
               },
               required: ["type", "description", "severity", "score", "confidence", "suggestedFixes"]
             }
@@ -286,6 +293,91 @@ export const generateIssueFix = async (
   }
 };
 
+export const generateIssuesFromNotes = async (
+    imageBase64: string,
+    notes: string,
+    referenceImages: string[] = []
+  ): Promise<QualityIssue[]> => {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API_KEY_NOT_FOUND");
+    
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // Construct parts array
+    const parts: any[] = [
+        { inlineData: { mimeType: 'image/png', data: imageBase64 } }
+    ];
+
+    // Add reference images
+    referenceImages.forEach(img => {
+        parts.push({ inlineData: { mimeType: 'image/png', data: img } });
+    });
+
+    const prompt = `
+      The user has provided the following notes/observations about this image:
+      "${notes}"
+
+      INPUT INFORMATION:
+      - The FIRST image provided is the GENERATED IMAGE that needs analysis.
+      - Any SUBSEQUENT images are USER-PROVIDED REFERENCES to explain their intent or show what they wanted. Use them to understand the "Idea" or "Style" aimed for.
+  
+      Task: 
+      1. Analyze the generated image in the context of these notes and references.
+      2. Convert actionable points from these notes into formal technical quality issues or suggestions.
+      3. If the note describes a defect, categorize it and suggest a fix.
+      4. If the note describes an idea supported by reference images, format it as a 'Note' severity item with implementation suggestions on how to achieve that look better.
+    `;
+
+    parts.push({ text: prompt });
+  
+    const responseSchema = {
+      type: Type.OBJECT,
+      properties: {
+        issues: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              type: { type: Type.STRING },
+              description: { type: Type.STRING },
+              severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor', 'Note'] },
+              score: { type: Type.NUMBER },
+              suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["type", "description", "severity", "score", "suggestedFixes"]
+          }
+        }
+      }
+    };
+  
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+          parts: parts,
+        },
+        config: { responseMimeType: 'application/json', responseSchema: responseSchema },
+      });
+  
+      if (response.text) {
+          const parsed = JSON.parse(response.text);
+          return (parsed.issues || []).map((i: QualityIssue) => ({
+              ...i,
+              confidence: 100,
+              passCount: 1,
+              id: crypto.randomUUID(),
+              userNotes: "Generated from Scene Notes"
+          }));
+      }
+      throw new Error("Empty response");
+    } catch (error: any) {
+       if (error.message?.includes("Requested entity was not found")) {
+        throw new Error("API_KEY_NOT_FOUND");
+      }
+      throw new Error("Failed to generate issues from notes.");
+    }
+  };
+
 export const refreshPromptAnalysis = async (
   imageBase64: string,
   currentDoc: SceneDocumentation
@@ -329,15 +421,29 @@ export const askQuestion = async (
   imageBase64: string,
   currentDoc: SceneDocumentation,
   question: string
-): Promise<{ answer: string; updates?: { critique?: string; newImprovements?: string[] } }> => {
+): Promise<{ answer: string; annotations?: Annotation[]; updates?: { critique?: string; newImprovements?: string[] } }> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("API_KEY_NOT_FOUND");
   
   const ai = new GoogleGenAI({ apiKey });
+  
+  // Updated Schema to include annotations
   const responseSchema = {
     type: Type.OBJECT,
     properties: {
       answer: { type: Type.STRING },
+      annotations: {
+          type: Type.ARRAY,
+          items: {
+              type: Type.OBJECT,
+              properties: {
+                  label: { type: Type.STRING },
+                  style: { type: Type.STRING, enum: ['box', 'paint'], description: "Use 'box' for discrete objects (hands, faces) and 'paint' for surface issues (texture, lighting)." },
+                  box_2d: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "Normalized [ymin, xmin, ymax, xmax]" }
+              },
+              required: ["label", "style", "box_2d"]
+          }
+      },
       updates: {
         type: Type.OBJECT,
         properties: {
@@ -349,7 +455,15 @@ export const askQuestion = async (
     required: ["answer"]
   };
 
-  const prompt = `User question: "${question}". Current analysis: ${JSON.stringify(currentDoc.promptAnalysis)}`;
+  const prompt = `
+    User question: "${question}". 
+    Current analysis: ${JSON.stringify(currentDoc.promptAnalysis)}
+    
+    If the user's question relates to a specific visual element or defect in the image:
+    1. Provide 2D bounding box coordinates (ymin, xmin, ymax, xmax) normalized to 0-1.
+    2. Choose 'box' style for objects (outlines) or 'paint' style for surface areas (translucent fill).
+    3. Ensure the annotation does not obscure the issue itself (the paint should be translucent).
+  `;
 
   try {
     const response = await ai.models.generateContent({
