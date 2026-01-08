@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { X, Key, ShieldCheck, ExternalLink, Trash2, Check, AlertCircle, Info, ChevronDown, ChevronRight, CreditCard } from 'lucide-react';
+import { X, Key, ShieldCheck, ExternalLink, Trash2, Check, AlertCircle, Info, ChevronDown, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,12 +12,11 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentKey }) => {
   const [inputValue, setInputValue] = useState(currentKey);
   const [error, setError] = useState<string | null>(null);
-  // Auto-expand instructions if no key is present
   const [showInstructions, setShowInstructions] = useState(!currentKey);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     setInputValue(currentKey);
-    // If opening without a key, show instructions
     if (isOpen && !currentKey) {
         setShowInstructions(true);
     }
@@ -30,7 +30,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       setError("Please enter a valid API Key.");
       return;
     }
-    // Basic validation for Google API keys (usually start with AIza)
     if (!trimmed.startsWith('AIza')) {
        setError("This doesn't look like a valid Google Gemini API Key (usually starts with 'AIza').");
        return;
@@ -43,13 +42,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
   const handleClear = () => {
     setInputValue('');
-    onSave(''); // Clear key
+    onSave(''); 
     onClose();
   };
 
+  const handleBackdropClick = (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+          onClose();
+      }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+    <div 
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={handleBackdropClick}
+    >
+      <div 
+          className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+          onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-900/50 shrink-0">
@@ -88,15 +99,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={inputValue}
                   onChange={(e) => {
                       setInputValue(e.target.value);
                       setError(null);
                   }}
                   placeholder="AIzaSy..."
-                  className={`w-full bg-slate-950 border ${error ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-indigo-500'} rounded-lg py-2.5 pl-4 pr-10 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm`}
+                  className={`w-full bg-slate-950 border ${error ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-indigo-500'} rounded-lg py-2.5 pl-4 pr-12 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm`}
+                  autoFocus
                 />
+                <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    tabIndex={-1}
+                >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
               {error && (
                   <div className="flex items-center gap-2 mt-2 text-red-400 text-xs">

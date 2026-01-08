@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { SceneDocumentation, QualityIssue } from '../types';
-import { Layers, Zap, Sliders, MessageSquare, Quote, Info, Loader2, AlertTriangle, Wand2, CheckCircle2, X, Plus, Edit2, Trash2, Save, XCircle, Bot, Send, RefreshCw, ArrowRight, Target, Gauge } from 'lucide-react';
+import { Layers, Zap, Sliders, MessageSquare, Quote, Info, Loader2, AlertTriangle, Wand2, CheckCircle2, X, Plus, Edit2, Trash2, Save, XCircle, Bot, Send, RefreshCw, ArrowRight, Target, Gauge, StickyNote, Check, Filter } from 'lucide-react';
 import { WorkflowGraph } from './WorkflowGraph';
 import { MarkdownViewer } from './MarkdownViewer';
 import { runConsensusQualityAnalysis } from '../services/geminiService';
@@ -39,6 +39,11 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
   const [passCount, setPassCount] = useState<number>(3);
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0);
   const [isRunningConsensus, setIsRunningConsensus] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  // Inline Note Editing State
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [tempNoteContent, setTempNoteContent] = useState("");
 
   const [editingPromptAnalysis, setEditingPromptAnalysis] = useState(false);
   const [editedCritique, setEditedCritique] = useState('');
@@ -53,6 +58,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
           case 'critical': return 'bg-red-500/10 text-red-400 border-red-500/20';
           case 'major': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
           case 'minor': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+          case 'note': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
           default: return 'bg-slate-800 text-slate-400';
       }
   };
@@ -68,6 +74,51 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
       if (conf >= 80) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
       if (conf >= 50) return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
       return 'text-red-400 bg-red-500/10 border-red-500/20';
+  };
+
+  const toggleNote = (id: string) => {
+      const next = new Set(expandedNotes);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      setExpandedNotes(next);
+      // Cancel edit if closing
+      if (expandedNotes.has(id) && editingNoteId === id) {
+          setEditingNoteId(null);
+      }
+  };
+
+  const handleStartNoteEdit = (issue: QualityIssue) => {
+      setTempNoteContent(issue.userNotes || "");
+      setEditingNoteId(issue.id);
+  };
+
+  const handleCancelNoteEdit = () => {
+      setEditingNoteId(null);
+      setTempNoteContent("");
+  };
+
+  const handleSaveNote = async (issue: QualityIssue) => {
+      if (!data.qualityAnalysis) return;
+      
+      const updatedIssue = { ...issue, userNotes: tempNoteContent };
+      const newIssues = data.qualityAnalysis.issues.map(i => i.id === issue.id ? updatedIssue : i);
+      
+      onUpdateData({
+          ...data,
+          qualityAnalysis: {
+              ...data.qualityAnalysis,
+              issues: newIssues
+          }
+      });
+      
+      setEditingNoteId(null);
+
+      // Trigger regen if note content changed significantly
+      if (issue.userNotes !== tempNoteContent && onRegenerateIssueFix) {
+          setRegeneratingFixForId(issue.id);
+          await onRegenerateIssueFix(updatedIssue);
+          setRegeneratingFixForId(null);
+      }
   };
 
   // Scroll to bottom of QA when new message arrives
@@ -88,21 +139,6 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
 
   const handleRunConsensus = async () => {
       if (!data.qualityAnalysis) return;
-      // We need image data. Assuming parent component handles data flow, 
-      // but here we might need to rely on the parent or we need the imageBase64.
-      // Since we don't have direct access to imageBase64 prop here, 
-      // we'll fetch it from the cached store or assume parent passed it.
-      // Limitation: DocumentationViewer assumes data is passed in.
-      // Workaround: We will use the 'onRegenerateIssueFix' hook pattern but for consensus.
-      // Actually, let's grab the image from the DOM preview if needed or assume App.tsx functionality.
-      // Better: We need to ask App to do it. But for this specific requirement change, 
-      // I will implement the logic here using a hack to get image data or refactor properly.
-      // The cleanest way is to use the existing data if available or error out. 
-      // NOTE: App.tsx has the file. 
-      
-      // Since I cannot change App.tsx to pass imageBase64 without outputting the whole file,
-      // I will assume the image is available via the existing `previewUrl` or DOM.
-      // Let's look at `App.tsx`... `previewUrl` is a blob URL.
       
       const imgElement = document.querySelector('img[alt="ComfyUI Generation"]') as HTMLImageElement;
       if (!imgElement) return;
@@ -162,6 +198,11 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
 
   const handleSaveIssue = async (index: number, updatedIssue: QualityIssue) => {
       if (!data.qualityAnalysis) return;
+      
+      const originalIssue = data.qualityAnalysis.issues[index];
+      const noteChanged = originalIssue.userNotes !== updatedIssue.userNotes;
+      const descChanged = originalIssue.description !== updatedIssue.description;
+
       const newIssues = [...data.qualityAnalysis.issues];
       newIssues[index] = updatedIssue;
       const newScore = calculateScore(newIssues);
@@ -176,6 +217,13 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
       });
       setEditingIssueIndex(null);
       setEditingIssue(null);
+
+      // If note changed, trigger regen
+      if ((noteChanged || descChanged) && onRegenerateIssueFix) {
+          setRegeneratingFixForId(updatedIssue.id);
+          await onRegenerateIssueFix(updatedIssue);
+          setRegeneratingFixForId(null);
+      }
   };
 
   const handleAddIssue = async () => {
@@ -189,7 +237,8 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
           score: newIssue.score || 0.5,
           suggestedFixes: ["Generating fix..."],
           confidence: 100,
-          passCount: 1
+          passCount: 1,
+          userNotes: newIssue.userNotes || ""
       };
 
       const newIssues = [...data.qualityAnalysis.issues, issueToAdd];
@@ -205,6 +254,11 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
       });
       setNewIssue(null);
       
+      // Auto expand the note of the new issue if it exists
+      if (issueToAdd.userNotes) {
+          setExpandedNotes(prev => new Set(prev).add(issueToAdd.id));
+      }
+
       // Granular regen
       if (onRegenerateIssueFix) {
           setRegeneratingFixForId(issueToAdd.id);
@@ -338,22 +392,26 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                     </div>
                     <div>
                         <h2 className="text-xl font-semibold text-slate-100">Quality & Artifacts</h2>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-500">Confidence Threshold: {confidenceThreshold}%</span>
-                            <input 
-                                type="range" 
-                                min="0" 
-                                max="100" 
-                                value={confidenceThreshold} 
-                                onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
-                                className="w-24 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
-                        </div>
+                        <div className="text-xs text-slate-500 mt-1">AI-detected issues and improvements</div>
                     </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                     <div className="flex items-center gap-2 bg-slate-950 px-2 py-1.5 rounded-lg border border-slate-800">
+                     {/* Confidence Slider moved here */}
+                     <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 h-9" title="Filter issues by confidence">
+                        <Filter size={14} className="text-slate-400"/>
+                        <span className="text-xs text-slate-500 font-medium">{confidenceThreshold}%</span>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            value={confidenceThreshold} 
+                            onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
+                            className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        />
+                     </div>
+
+                     <div className="flex items-center gap-2 bg-slate-950 px-2 py-1.5 rounded-lg border border-slate-800 h-9">
                         <Gauge size={14} className="text-slate-400"/>
                         <select 
                             value={passCount}
@@ -369,15 +427,15 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                      <button 
                         onClick={handleRunConsensus}
                         disabled={isRunningConsensus}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 h-9"
                      >
                          {isRunningConsensus ? <Loader2 size={12} className="animate-spin" /> : <Target size={12} />}
                          {isRunningConsensus ? 'Analyzing...' : 'Run Analysis'}
                      </button>
 
-                    <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-                        <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Health Score</span>
-                        <span className={`text-lg font-bold ${getScoreColor(data.qualityAnalysis.overallScore)}`}>
+                    <div className="flex flex-row items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 h-9 shrink-0 whitespace-nowrap min-w-fit">
+                        <span className="text-xs text-slate-400 uppercase font-bold tracking-wider whitespace-nowrap">Health Score</span>
+                        <span className={`text-base font-bold ${getScoreColor(data.qualityAnalysis.overallScore)} whitespace-nowrap`}>
                             {data.qualityAnalysis.overallScore}/10
                         </span>
                     </div>
@@ -386,7 +444,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
 
             <div className="space-y-4">
                 {filteredIssues.map((issue, idx) => (
-                    <div key={issue.id || idx} className="bg-slate-950/50 rounded-lg border border-slate-800 p-4 group relative">
+                    <div key={issue.id || idx} className="bg-slate-950/50 rounded-lg border border-slate-800 p-4 group relative transition-colors hover:border-slate-700">
                         {editingIssueIndex === idx && editingIssue ? (
                              // Edit Mode
                              <div className="space-y-3">
@@ -396,6 +454,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                                         value={editingIssue.severity}
                                         onChange={(e) => setEditingIssue({ ...editingIssue, severity: e.target.value as any })}
                                      >
+                                         <option value="Note">Note</option>
                                          <option value="Minor">Minor</option>
                                          <option value="Major">Major</option>
                                          <option value="Critical">Critical</option>
@@ -411,7 +470,23 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                                     className="w-full bg-slate-900 border border-slate-700 rounded text-sm text-slate-200 px-2 py-2 min-h-[60px]"
                                     value={editingIssue.description}
                                     onChange={(e) => setEditingIssue({ ...editingIssue, description: e.target.value })}
+                                    placeholder="Issue Description"
                                  />
+                                 
+                                 {/* Edit Note Field (in full edit mode) */}
+                                 <div className="bg-slate-900/50 p-2 rounded border border-slate-800/50">
+                                    <div className="text-xs text-indigo-400 font-bold mb-1 flex items-center gap-1">
+                                        <StickyNote size={12} /> Context Note
+                                    </div>
+                                    <textarea 
+                                        className="w-full bg-slate-900 border border-slate-700 rounded text-xs text-slate-300 px-2 py-2 min-h-[40px] select-text"
+                                        value={editingIssue.userNotes || ''}
+                                        onChange={(e) => setEditingIssue({ ...editingIssue, userNotes: e.target.value })}
+                                        placeholder="Add context (e.g., 'Intentional style choice', 'Character is wearing gloves')"
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1">Changes to notes will trigger a regeneration of fix suggestions.</p>
+                                 </div>
+
                                  <div className="flex justify-end gap-2">
                                      <button onClick={handleCancelEditing} className="px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 rounded">Cancel</button>
                                      <button onClick={() => handleSaveIssue(idx, editingIssue)} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-500">Save</button>
@@ -419,29 +494,99 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                              </div>
                         ) : (
                             // View Mode
-                            <div className="flex items-start gap-4">
-                                <div className="flex flex-col gap-2">
-                                    <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border text-center ${getSeverityColor(issue.severity)}`}>
-                                        {issue.severity}
-                                    </div>
-                                    {issue.confidence !== undefined && (
-                                        <div className={`px-2 py-0.5 rounded text-[9px] font-mono border text-center ${getConfidenceColor(issue.confidence)}`} title={`Found in ${issue.passCount} passes`}>
-                                            {issue.confidence}% Conf
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex flex-col gap-2">
+                                        <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border text-center ${getSeverityColor(issue.severity)}`}>
+                                            {issue.severity}
                                         </div>
-                                    )}
-                                </div>
-                                <div className="flex-1 pr-16">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm font-semibold text-slate-200">{issue.type}</span>
-                                        <span className="text-xs text-slate-500">Penalty: -{issue.score}</span>
+                                        {issue.confidence !== undefined && (
+                                            <div className={`px-2 py-0.5 rounded text-[9px] font-mono border text-center ${getConfidenceColor(issue.confidence)}`} title={`Found in ${issue.passCount} passes`}>
+                                                {issue.confidence}% Conf
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-slate-400 text-sm">{issue.description}</p>
+                                    <div className="flex-1 pr-16">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-sm font-semibold text-slate-200">{issue.type}</span>
+                                            <span className="text-xs text-slate-500">Penalty: -{issue.score}</span>
+                                        </div>
+                                        <p className="text-slate-400 text-sm">{issue.description}</p>
+                                    </div>
+                                    
+                                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/80 p-1 rounded-lg backdrop-blur-sm z-10">
+                                        <button 
+                                            onClick={() => toggleNote(issue.id)} 
+                                            className={`p-1.5 rounded hover:bg-slate-800 ${issue.userNotes ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-indigo-300'}`}
+                                            title={expandedNotes.has(issue.id) ? "Hide Note" : "View/Add Note"}
+                                        >
+                                            <StickyNote size={14} />
+                                        </button>
+                                        <button onClick={() => handleStartEditing(idx, issue)} className="p-1.5 hover:text-indigo-400 text-slate-500 rounded hover:bg-slate-800"><Edit2 size={14} /></button>
+                                        <button onClick={() => handleDeleteIssue(idx)} className="p-1.5 hover:text-red-400 text-slate-500 rounded hover:bg-slate-800"><Trash2 size={14} /></button>
+                                    </div>
                                 </div>
-                                
-                                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/80 p-1 rounded-lg backdrop-blur-sm">
-                                    <button onClick={() => handleStartEditing(idx, issue)} className="p-1.5 hover:text-indigo-400 text-slate-500 rounded hover:bg-slate-800"><Edit2 size={14} /></button>
-                                    <button onClick={() => handleDeleteIssue(idx)} className="p-1.5 hover:text-red-400 text-slate-500 rounded hover:bg-slate-800"><Trash2 size={14} /></button>
-                                </div>
+
+                                {/* Expandable Note Block */}
+                                {expandedNotes.has(issue.id) && (
+                                    <div className="animate-in slide-in-from-top-1 duration-200" onClick={(e) => e.stopPropagation()}>
+                                        <div className="ml-16 mr-4 p-3 bg-indigo-950/20 border-l-2 border-indigo-500/30 rounded-r text-sm text-slate-300 relative group/note-block">
+                                            <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                                                <div className="flex items-center gap-1"><StickyNote size={10} /> User Context Note</div>
+                                                {/* Edit controls for note */}
+                                                {!editingNoteId && (
+                                                     <button 
+                                                        onClick={() => handleStartNoteEdit(issue)}
+                                                        className="text-[9px] text-slate-500 hover:text-indigo-300 flex items-center gap-1 opacity-50 group-hover/note-block:opacity-100 transition-opacity"
+                                                     >
+                                                        <Edit2 size={8} /> Edit Note
+                                                     </button>
+                                                )}
+                                            </div>
+
+                                            {editingNoteId === issue.id ? (
+                                                <div className="space-y-2">
+                                                    <textarea 
+                                                        className="w-full bg-slate-900/80 border border-slate-700/50 rounded text-xs text-slate-200 p-2 min-h-[60px] focus:ring-1 focus:ring-indigo-500/50 outline-none select-text"
+                                                        value={tempNoteContent}
+                                                        onChange={(e) => setTempNoteContent(e.target.value)}
+                                                        placeholder="Enter context notes..."
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <button 
+                                                            onClick={handleCancelNoteEdit}
+                                                            className="px-2 py-1 text-[10px] bg-slate-800 text-slate-400 hover:text-slate-300 rounded"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleSaveNote(issue)}
+                                                            className="px-2 py-1 text-[10px] bg-indigo-600 text-white rounded hover:bg-indigo-500 flex items-center gap-1"
+                                                        >
+                                                            <Check size={10} /> Save
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {issue.userNotes ? (
+                                                        <p className="italic text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleStartNoteEdit(issue)}>
+                                                            {issue.userNotes}
+                                                        </p>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => handleStartNoteEdit(issue)}
+                                                            className="text-slate-500 italic hover:text-indigo-400 flex items-center gap-1.5 transition-colors w-full text-left"
+                                                        >
+                                                            <span className="underline decoration-dotted decoration-slate-600 group-hover/add-note:decoration-indigo-400">No notes added. Click here to add context.</span>
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -475,6 +620,20 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                             value={newIssue.description || ''}
                             onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
                             />
+                            
+                            {/* Add Note on Creation */}
+                            <div className="bg-slate-900/50 p-2 rounded border border-slate-800/50">
+                                <div className="text-xs text-indigo-400 font-bold mb-1 flex items-center gap-1">
+                                    <StickyNote size={12} /> Context Note (Optional)
+                                </div>
+                                <textarea 
+                                    className="w-full bg-slate-900 border border-slate-700 rounded text-xs text-slate-300 px-2 py-2 min-h-[40px] select-text"
+                                    value={newIssue.userNotes || ''}
+                                    onChange={(e) => setNewIssue({ ...newIssue, userNotes: e.target.value })}
+                                    placeholder="Add context (e.g., 'Intentional style choice')"
+                                />
+                            </div>
+
                             <div className="flex justify-end gap-2">
                                 <button onClick={() => setNewIssue(null)} className="px-3 py-1 text-xs text-slate-400 hover:bg-slate-800 rounded">Cancel</button>
                                 <button onClick={handleAddIssue} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-500">Add & Generate Fix</button>
@@ -482,7 +641,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                      </div>
                 ) : (
                     <button 
-                        onClick={() => setNewIssue({ severity: 'Minor', score: 0.5, type: '' })}
+                        onClick={() => setNewIssue({ severity: 'Minor', score: 0.5, type: '', userNotes: '' })}
                         className="w-full py-2 border border-dashed border-slate-700 rounded-lg text-sm text-slate-500 hover:text-indigo-400 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-2"
                     >
                         <Plus size={14} /> Add Manual Issue
@@ -594,9 +753,13 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                            return (
                              <li key={issue.id} className="group/item flex flex-col gap-1 text-sm text-slate-300 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg relative hover:bg-indigo-500/10 transition-colors">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
-                                    <span className="text-xs font-bold text-rose-300/80 border border-rose-500/20 px-1 rounded uppercase">
-                                        FIX: {issue.type}
+                                    {issue.severity === 'Note' ? (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                                    ) : (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
+                                    )}
+                                    <span className={`text-xs font-bold ${issue.severity === 'Note' ? 'text-blue-300/80 border-blue-500/20' : 'text-rose-300/80 border-rose-500/20'} border px-1 rounded uppercase`}>
+                                        {issue.severity === 'Note' ? 'NOTE: ' : 'FIX: '} {issue.type}
                                     </span>
                                     {issue.confidence && (
                                         <span className={`text-[9px] px-1 rounded border ${getConfidenceColor(issue.confidence)}`}>

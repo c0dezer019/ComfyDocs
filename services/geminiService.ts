@@ -44,7 +44,7 @@ export const generateSceneDocumentation = async (
                     properties: {
                         type: { type: Type.STRING },
                         description: { type: Type.STRING },
-                        severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor'] },
+                        severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor', 'Note'] },
                         score: { type: Type.NUMBER },
                         suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } }
                     },
@@ -219,7 +219,7 @@ export const runConsensusQualityAnalysis = async (
               properties: {
                 type: { type: Type.STRING },
                 description: { type: Type.STRING },
-                severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor'] },
+                severity: { type: Type.STRING, enum: ['Critical', 'Major', 'Minor', 'Note'] },
                 score: { type: Type.NUMBER },
                 confidence: { type: Type.NUMBER, description: "Percentage 0-100" },
                 suggestedFixes: { type: Type.ARRAY, items: { type: Type.STRING } }
@@ -255,7 +255,17 @@ export const generateIssueFix = async (
     required: ["fix"]
   };
 
-  const prompt = `Provide a single, concise technical fix for this Stable Diffusion issue: ${issue.type} - ${issue.description}`;
+  const prompt = `
+    Context: Stable Diffusion/ComfyUI Image Analysis.
+    Issue Type: ${issue.type}
+    Description: ${issue.description}
+    User Context/Notes: ${issue.userNotes || "None provided."}
+
+    Task: Provide a single, concise technical fix or actionable suggestion for this issue.
+    CRITICAL: If the User Context/Notes explain that this element is intentional (e.g., "The character is an alien", "Stylized distortion"), 
+    your fix should validate that intention or offer a way to refine it without "fixing" it as an error. 
+    If the note clarifies it is NOT an issue, return "No fix needed (User Verified)".
+  `;
 
   try {
     const response = await ai.models.generateContent({

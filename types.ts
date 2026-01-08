@@ -12,12 +12,13 @@ export interface QualityIssue {
   id: string; // Unique identifier for tracking
   type: string; // e.g., 'Anatomy', 'Artifact', 'Lighting'
   description: string;
-  severity: 'Critical' | 'Major' | 'Minor';
+  severity: 'Critical' | 'Major' | 'Minor' | 'Note';
   score: number; // 1-10 impact rating
   confidence?: number; // 0-100 percentage of accuracy/recurrence
   passCount?: number; // Number of passes used to determine confidence
   suggestedFixes?: string[]; // Specific fixes linked to this issue
   suggestedFix?: string; // Legacy support
+  userNotes?: string; // User-provided context that influences suggestions
 }
 
 export interface PromptAnalysis {

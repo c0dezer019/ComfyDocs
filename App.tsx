@@ -284,7 +284,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col font-sans">
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={resetState}>
             <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/20">
               <Sparkles className="w-5 h-5 text-white" />
@@ -303,7 +303,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         {!previewUrl && (showLanding ? <Landing onGetStarted={() => setShowLanding(false)} /> : (
             <div className="flex flex-col items-center max-w-2xl mx-auto relative animate-in fade-in zoom-in-95 duration-500">
                 <button onClick={() => setShowLanding(true)} className="self-start mb-4 text-slate-500 hover:text-slate-300 text-sm flex items-center gap-1 transition-colors">
@@ -328,7 +328,7 @@ const App: React.FC = () => {
 
         {previewUrl && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500">
-            <div className="lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-24">
+            <div className="lg:col-span-3 flex flex-col gap-6 lg:sticky lg:top-24">
               <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 shadow-xl">
                 <div className="aspect-square relative rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center group/preview">
                   <img src={previewUrl} alt="ComfyUI Generation" className="max-w-full max-h-full object-contain" />
@@ -401,7 +401,7 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <div className="lg:col-span-8 flex flex-col">
+            <div className="lg:col-span-9 flex flex-col">
               {processingState.status === 'error' ? (
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
