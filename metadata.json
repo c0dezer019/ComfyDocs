@@ -1,5 +1,5 @@
 {
-  "name": "Copy of ComfyDocs",
+  "name": "ComfyDocs",
   "description": "Extracts ComfyUI workflow metadata from images and generates comprehensive scene documentation using Gemini AI.",
   "requestFramePermissions": []
 }
