@@ -9,31 +9,39 @@ ComfyDocs is a React-based forensic analysis tool for ComfyUI-generated images. 
 ## Development Commands
 
 **Development server:**
+
 ```bash
-npm run dev
+pnpm run dev
 ```
+
 Starts Vite dev server with hot module replacement.
 
 **Production build:**
+
 ```bash
-npm run build
+pnpm run build
 ```
+
 Compiles TypeScript and bundles for production. Output goes to `dist/`.
 
 **Preview production build:**
+
 ```bash
-npm run preview
+pnpm run preview
 ```
+
 Serves the production build locally for testing.
 
 **Install dependencies:**
+
 ```bash
-npm install
+pnpm install
 ```
 
 ## Architecture Overview
 
 ### Tech Stack
+
 - **Framework:** React 19.2.3 with TypeScript 5.8
 - **Build Tool:** Vite 7.3.1
 - **AI Integration:** Google Gemini API (@google/genai)
@@ -71,24 +79,28 @@ App.tsx (main orchestrator)
 
 **Graceful Degradation:**
 The app operates in multiple modes based on available resources:
+
 1. Full AI Analysis (with API key)
 2. Offline Local Analysis (no API key - heuristic parameter extraction)
 3. Demo Mode (pre-computed sample data)
 4. Cache Hits (instant re-load from IndexedDB)
 
 **PNG Metadata Handling:**
+
 - PNG files contain embedded ComfyUI workflow JSON in tEXt chunks
 - `pngParser.ts` manually parses PNG binary format (no external library)
 - `pngWriter.ts` can embed analysis results back into PNG as `ComfyDocs_Report` chunk
 - This enables "round-trip" analysis sharing (PNG with embedded report)
 
 **API Key Security:**
+
 - API keys encrypted with password-based XOR cipher (`encryption.ts`)
 - Stored encrypted in localStorage, decrypted to sessionStorage during session
 - Not cryptographically strong (client-side obfuscation only)
 - Never stored in plain text
 
 **Image Annotation System:**
+
 - Quality issues and Q&A responses include spatial bounding boxes
 - Normalized coordinates (0-1 range) for resolution independence
 - Two overlay styles: `box` (outlined rectangles) and `paint` (translucent fills)
@@ -101,26 +113,31 @@ The app operates in multiple modes based on available resources:
 All Gemini API interactions go through this service:
 
 **`generateSceneDocumentation()`** - Main analysis pipeline
+
 - Model: `gemini-3-pro-preview`
 - Takes base64 image + workflow/prompt JSON
 - Returns structured `SceneDocumentation` with scene overview, quality analysis, prompt adherence scoring
 
 **`runConsensusQualityAnalysis()`** - Multi-pass quality verification
+
 - Runs N parallel passes with `gemini-3-flash-preview` (faster)
 - Judge pass consolidation with `gemini-3-pro-preview` (smarter)
 - Calculates confidence percentages based on issue recurrence across passes
 - Assigns spatial bounding boxes to issues
 
 **`askQuestion()`** - Interactive Q&A with image context
+
 - Allows follow-up questions about the image
 - Returns spatial annotations (bounding boxes with labels)
 - Can update critique and improvements
 
 **`generateIssuesFromNotes()`** - Convert user notes to quality issues
+
 - Processes user observations with optional reference images
 - Generates formal quality issues with severity levels
 
 **`generateIssueFix()`** - Single-issue fix generation
+
 - Respects user context when generating fix suggestions
 - Can validate intentional style choices
 
@@ -131,34 +148,44 @@ API key retrieval: All functions use `getApiKey()` which reads from sessionStora
 ## Utilities
 
 ### pngParser.ts
+
 Parses PNG binary format to extract tEXt chunks:
+
 - `workflow`: ComfyUI node graph
 - `prompt`: Generation parameters
 - `ComfyDocs_Report`: Pre-computed analysis (for embedded reports)
 - Includes demo workflow for interactive demo mode
 
 ### workflowAnalyzer.ts
+
 Offline fallback for parameter extraction:
+
 - Traces KSampler nodes to text inputs
 - Resolves Reroute nodes transparently
 - Extracts: seed, steps, CFG, sampler, scheduler, denoise, model, VAE
 - Handles both standard and SDXL workflows
 
 ### cacheService.ts
+
 IndexedDB persistence layer:
+
 - SHA-256 file hashing for uniqueness
 - Caches entire `SceneDocumentation` objects
 - Dramatically improves UX for repeated analyses
 - Prevents redundant API calls (cost savings)
 
 ### encryption.ts
+
 API key encryption/decryption:
+
 - XOR cipher with base64 encoding
 - Password-based encryption (client-side obfuscation)
 - Prefix validation (`::COMFY_LITE_V2::`)
 
 ### pngWriter.ts
+
 Embeds analysis reports back into PNG files:
+
 - Creates new PNG with `ComfyDocs_Report` tEXt chunk
 - Preserves original workflow/prompt metadata
 - Enables analysis sharing
@@ -168,6 +195,7 @@ Embeds analysis reports back into PNG files:
 All TypeScript interfaces are defined in `types.ts`:
 
 **`SceneDocumentation`** - Main analysis result structure containing:
+
 - `sceneOverview`: Scene categorization and details
 - `workflowAnalysis`: Text analysis of ComfyUI workflow
 - `parameters`: Extracted generation parameters
@@ -177,6 +205,7 @@ All TypeScript interfaces are defined in `types.ts`:
 - `userSceneNotes`: User annotations
 
 **`QualityIssue`** - Defect/observation record:
+
 - Type, description, severity (Critical/Major/Minor/Note)
 - Score (0-10 impact), confidence (0-100%)
 - Spatial bounding box + overlay style
@@ -187,13 +216,16 @@ All TypeScript interfaces are defined in `types.ts`:
 ## Build Configuration
 
 ### vite.config.ts
+
 Manual chunk splitting for optimal loading:
+
 - `vendor-react`: React/ReactDOM
 - `vendor-ai`: Gemini SDK
 - `vendor-ui`: Lucide + Markdown
 - Chunk size warning limit: 1000kB
 
 ### tsconfig.json
+
 - Target: ES2022
 - Module resolution: bundler
 - Path aliases: `@/*` maps to project root
@@ -203,12 +235,14 @@ Manual chunk splitting for optimal loading:
 ## State Management
 
 State is managed in `App.tsx` using React hooks:
+
 - 15+ useState hooks for processing, analysis results, file handling, API keys
 - Props callbacks for child-to-parent communication
 - No global state management library (Redux/Zustand)
 - Cache synchronization on state changes
 
 Key state variables:
+
 - `imageData`: Current PNG file data
 - `documentation`: Analysis results
 - `processing`: Loading states
@@ -231,6 +265,7 @@ The app requires a Google Gemini API key for AI features:
 ## Common Development Patterns
 
 **Adding a new Gemini API function:**
+
 1. Add function to `services/geminiService.ts`
 2. Use `getApiKey()` to retrieve session API key
 3. Define TypeScript interface in `types.ts` if needed
@@ -238,6 +273,7 @@ The app requires a Google Gemini API key for AI features:
 5. Update relevant component to call the function
 
 **Adding a new component:**
+
 1. Create in `components/` directory
 2. Use TypeScript with proper prop interfaces
 3. Import and use in parent component (likely App.tsx or DocumentationViewer.tsx)
@@ -245,12 +281,14 @@ The app requires a Google Gemini API key for AI features:
 5. Follow existing Tailwind styling patterns (glassmorphism, dark theme)
 
 **Modifying PNG metadata handling:**
+
 1. Update `pngParser.ts` for reading new chunks
 2. Update `pngWriter.ts` for writing new chunks
 3. Update `types.ts` if data structure changes
 4. Handle backward compatibility with existing PNG files
 
 **Adding new quality issue types:**
+
 - Update Gemini prompts in `geminiService.ts`
 - Ensure severity levels map correctly (Critical/Major/Minor/Note)
 - Verify spatial annotation rendering in ImagePreviewModal
@@ -259,6 +297,7 @@ The app requires a Google Gemini API key for AI features:
 ## Styling
 
 The app uses Tailwind CSS loaded via CDN in `index.html`:
+
 - Dark theme: slate-900/slate-950 base colors
 - Glassmorphism: Frosted glass effect with backdrop blur
 - Primary: Indigo-600, Secondary: Violet-600
@@ -279,6 +318,7 @@ No CSS framework dependencies - pure Tailwind utility classes.
 ## Import Path Alias
 
 TypeScript is configured with path alias `@/*` mapping to project root:
+
 ```typescript
 import { QualityIssue } from '@/types';
 import { parseComfyMetadata } from '@/utils/pngParser';
