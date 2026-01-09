@@ -186,19 +186,23 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                         // Leader line configuration
                         const leaderLength = Math.max(imgDims.w, imgDims.h) * 0.05; // 5% leader line
                         const elbowOffset = leaderLength * 0.5;
+                        const shoulderLength = Math.max(imgDims.w, imgDims.h) * 0.02; // Horizontal line length
+                        const labelPadding = Math.max(imgDims.w, imgDims.h) * 0.01; // Padding between line and text
                         
                         // Origin on the box (corner)
                         const originX = isRightSide ? x : x + width;
                         const originY = y; // Top corner
 
-                        // Destination for text
+                        // Destination for diagonal
                         const destX = isRightSide ? originX - leaderLength : originX + leaderLength;
                         const destY = isTopSide ? originY + height + elbowOffset : originY - elbowOffset;
                         
-                        // Elbow Point
-                        const elbowX = isRightSide ? originX - elbowOffset : originX + elbowOffset;
-                        const elbowY = originY;
+                        // Shoulder End Point
+                        const shoulderEndX = isRightSide ? destX - shoulderLength : destX + shoulderLength;
 
+                        // Text Anchor Point
+                        const textX = isRightSide ? shoulderEndX - labelPadding : shoulderEndX + labelPadding;
+                        
                         return (
                             <g key={idx}>
                                 {/* Bounding Box - Always use box style for clarity as requested */}
@@ -211,26 +215,18 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                                     className={isFocused ? "animate-pulse" : ""}
                                 />
                                 
-                                {/* Leader Line: Box -> Elbow -> Text */}
+                                {/* Leader Line: Box -> Elbow -> Shoulder */}
                                 <path 
-                                    d={`M ${originX} ${originY} L ${destX} ${destY}`}
+                                    d={`M ${originX} ${originY} L ${destX} ${destY} L ${shoulderEndX} ${destY}`}
                                     stroke={color}
                                     strokeWidth="1.5"
                                     fill="none"
                                     vectorEffect="non-scaling-stroke"
                                 />
-                                <line 
-                                    x1={destX} y1={destY} 
-                                    x2={isRightSide ? destX - (imgDims.w * 0.02) : destX + (imgDims.w * 0.02)} 
-                                    y2={destY} 
-                                    stroke={color}
-                                    strokeWidth="1.5"
-                                    vectorEffect="non-scaling-stroke"
-                                />
 
                                 {/* Label Text */}
                                 <text 
-                                    x={isRightSide ? destX - (imgDims.w * 0.005) : destX + (imgDims.w * 0.005)} 
+                                    x={textX} 
                                     y={destY} 
                                     fill={color} 
                                     fontSize={Math.max(imgDims.w, imgDims.h) * 0.02} // Responsive font size

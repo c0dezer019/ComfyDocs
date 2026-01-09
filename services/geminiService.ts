@@ -2,21 +2,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SceneDocumentation, PromptAnalysis, QualityIssue, Annotation } from "../types";
 
-// Helper to get effective API key from cookies
+// Helper to get effective API key from Session Storage (Decrypted by App)
 const getApiKey = (): string => {
-  const name = 'gemini_api_key=';
-  const decodedCookie = decodeURIComponent(document.cookie);
-  const ca = decodedCookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') {
-      c = c.substring(1);
-    }
-    if (c.indexOf(name) === 0) {
-      return c.substring(name.length, c.length);
-    }
-  }
-  return '';
+  if (typeof window === 'undefined') return '';
+  // The App component handles decryption and places the plain key here for the session
+  return sessionStorage.getItem('gemini_api_key_decrypted') || '';
 };
 
 export const generateSceneDocumentation = async (

@@ -1,40 +1,18 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileJson, FileText, Image as ImageIcon, Sparkles, Loader2, AlertCircle, ChevronLeft, RefreshCw, Database, ArrowLeft, Key, ExternalLink, Settings, ZoomIn } from 'lucide-react';
+import { Upload, FileJson, FileText, Image as ImageIcon, Sparkles, Loader2, AlertCircle, ChevronLeft, RefreshCw, Database, ArrowLeft, Key, ExternalLink, Settings, ZoomIn, Lock } from 'lucide-react';
 import { extractComfyMetadata } from './utils/pngParser';
 import { generateSceneDocumentation, askQuestion, refreshPromptAnalysis, generateIssueFix, generateIssuesFromNotes } from './services/geminiService';
 import { analyzeWorkflowLocally } from './utils/workflowAnalyzer';
 import { calculateFileHash, getCachedAnalysis, cacheAnalysis } from './utils/cacheService';
+import { encrypt, decrypt } from './utils/encryption';
 import { JsonViewer } from './components/JsonViewer';
 import { DocumentationViewer } from './components/DocumentationViewer';
 import { Landing } from './components/Landing';
 import { SettingsModal } from './components/SettingsModal';
+import { UnlockModal } from './components/UnlockModal';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { ProcessingState, AnalysisResult, ComfyMetadata, SceneDocumentation, QualityIssue, SceneNote, Annotation } from './types';
-
-// Cookie utilities
-const setCookie = (name: string, value: string, days?: number) => {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-    }
-    // We attempt to be as secure as possible in a client-side environment.
-    // Note: HttpOnly is NOT possible via JavaScript, so we use Secure and SameSite=Strict.
-    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Strict; Secure";
-};
-
-const getCookie = (name: string): string => {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-    }
-    return '';
-};
 
 const App: React.FC = () => {
   const [processingState, setProcessingState] = useState<ProcessingState>({ status: 'idle' });
@@ -42,13 +20,11 @@ const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRefiningPrompt, setIsRefiningPrompt] = useState(false);
   
-  // Key Management State (Cookie Based)
-  const [localApiKey, setLocalApiKey] = useState<string>(() => {
-    return getCookie('gemini_api_key');
-  });
-  
-  const [hasApiKey, setHasApiKey] = useState<boolean>(false); 
+  // Key Management State
+  const [localApiKey, setLocalApiKey] = useState<string>(''); // Active decrypted key (memory)
+  const [hasEncryptedKey, setHasEncryptedKey] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   
   // Image Preview Modal State
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -69,11 +45,20 @@ const App: React.FC = () => {
   const [showLanding, setShowLanding] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Validate API Key
+  // Check for encrypted key on mount
   useEffect(() => {
-    const isValid = !!(localApiKey && localApiKey.length > 20 && localApiKey.startsWith('AIza'));
-    setHasApiKey(isValid);
-  }, [localApiKey]);
+    const encrypted = localStorage.getItem('gemini_api_key_encrypted');
+    if (encrypted) {
+        setHasEncryptedKey(true);
+        // If we don't have a session key yet, ask to unlock
+        const sessionKey = sessionStorage.getItem('gemini_api_key_decrypted');
+        if (sessionKey) {
+            setLocalApiKey(sessionKey);
+        } else {
+            setIsUnlockModalOpen(true);
+        }
+    }
+  }, []);
 
   // Aggregate annotations from QA history for the modal overlay
   useEffect(() => {
@@ -172,7 +157,7 @@ const App: React.FC = () => {
             setProcessingState({ status: 'complete' });
             
             // Automatically start AI analysis if key is present
-            if (hasApiKey) {
+            if (localApiKey) {
                 await performAiAnalysis(file, workflowStr, promptStr, hash);
             }
         }
@@ -182,11 +167,14 @@ const App: React.FC = () => {
   };
 
   const performAiAnalysis = async (file: File, workflowStr: string, promptStr: string, hash: string) => {
-      const apiKey = getCookie('gemini_api_key');
-      
-      if (!apiKey || !apiKey.startsWith('AIza')) {
-          setHasApiKey(false);
-          setIsSettingsOpen(true);
+      // NOTE: geminiService now reads the decrypted key from sessionStorage.
+      // We check here for UI state.
+      if (!localApiKey || !localApiKey.startsWith('AIza')) {
+          if (hasEncryptedKey) {
+              setIsUnlockModalOpen(true);
+          } else {
+              setIsSettingsOpen(true);
+          }
           return;
       }
 
@@ -224,7 +212,7 @@ const App: React.FC = () => {
           setAiStatus('complete');
       } catch (error: any) {
           if (error.message === 'API_KEY_NOT_FOUND') {
-              setHasApiKey(false);
+              setLocalApiKey(''); // Reset invalid key
               setAiStatus('error');
               setErrorMessage("Valid API key required.");
               setIsSettingsOpen(true);
@@ -235,11 +223,43 @@ const App: React.FC = () => {
       }
   };
   
-  const handleSaveLocalKey = async (key: string) => {
-      setLocalApiKey(key);
-      if (key) {
-        setCookie('gemini_api_key', key, 7); // Persistent for 7 days
-        // If we have a file loaded and are currently in an offline/partial state, trigger AI now
+  const handleUnlock = (password: string) => {
+      const encrypted = localStorage.getItem('gemini_api_key_encrypted');
+      if (!encrypted) return false;
+      
+      const decrypted = decrypt(encrypted, password);
+      if (decrypted && decrypted.startsWith('AIza')) {
+          setLocalApiKey(decrypted);
+          sessionStorage.setItem('gemini_api_key_decrypted', decrypted);
+          setIsUnlockModalOpen(false);
+          // If we have a file ready, trigger analysis
+          if (currentFile && metadata && currentFileHash) {
+             const workflowStr = JSON.stringify(metadata.workflow || {});
+             const promptStr = JSON.stringify(metadata.prompt || {});
+             performAiAnalysis(currentFile, workflowStr, promptStr, currentFileHash);
+          }
+          return true;
+      }
+      return false;
+  };
+
+  const handleCancelUnlock = () => {
+      setIsUnlockModalOpen(false);
+      // App remains in offline mode
+  };
+
+  const handleSaveLocalKey = async (key: string, password?: string) => {
+      if (key && password) {
+        // ENCRYPT and SAVE to LOCAL STORAGE
+        const encrypted = encrypt(key, password);
+        localStorage.setItem('gemini_api_key_encrypted', encrypted);
+        
+        // Also set active session
+        sessionStorage.setItem('gemini_api_key_decrypted', key);
+        setLocalApiKey(key);
+        setHasEncryptedKey(true);
+        
+        // Trigger AI if ready
         if (currentFile && metadata && currentFileHash) {
             setTimeout(() => {
                 const workflowStr = JSON.stringify(metadata.workflow || {});
@@ -248,7 +268,10 @@ const App: React.FC = () => {
             }, 0);
         }
       } else {
-        setCookie('gemini_api_key', '', -1); // Clear cookie
+        localStorage.removeItem('gemini_api_key_encrypted');
+        sessionStorage.removeItem('gemini_api_key_decrypted');
+        setLocalApiKey('');
+        setHasEncryptedKey(false);
       }
   };
 
@@ -284,8 +307,7 @@ const App: React.FC = () => {
           }
       } catch (e: any) {
           if (e.message === 'API_KEY_NOT_FOUND') {
-             setHasApiKey(false);
-             setIsSettingsOpen(true);
+             setIsUnlockModalOpen(true);
           }
       } finally {
           if (requestId === refineRequestRef.current) setIsRefiningPrompt(false);
@@ -306,8 +328,7 @@ const App: React.FC = () => {
           });
       } catch (e: any) {
           if (e.message === 'API_KEY_NOT_FOUND') {
-              setHasApiKey(false);
-              setIsSettingsOpen(true);
+              setIsUnlockModalOpen(true);
           }
       }
   };
@@ -351,8 +372,7 @@ const App: React.FC = () => {
 
       } catch (e: any) {
           if (e.message === 'API_KEY_NOT_FOUND') {
-            setHasApiKey(false);
-            setIsSettingsOpen(true);
+            setIsUnlockModalOpen(true);
           }
           throw e;
       }
@@ -391,8 +411,7 @@ const App: React.FC = () => {
         await handleUpdateData(newData);
     } catch (e: any) {
         if (e.message === 'API_KEY_NOT_FOUND') {
-            setHasApiKey(false);
-            setIsSettingsOpen(true);
+            setIsUnlockModalOpen(true);
         }
         throw e;
     }
@@ -410,11 +429,11 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
                <button 
-                  onClick={handleOpenSettings}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${hasApiKey ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-indigo-500/50 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20'}`}
+                  onClick={hasEncryptedKey && !localApiKey ? () => setIsUnlockModalOpen(true) : handleOpenSettings}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${localApiKey ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-indigo-500/50 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20'}`}
                >
-                  {hasApiKey ? <Key size={12} className="text-emerald-400" /> : <Settings size={12} />}
-                  {hasApiKey ? 'API Ready' : 'Setup API Key'}
+                  {localApiKey ? <Key size={12} className="text-emerald-400" /> : <Settings size={12} />}
+                  {localApiKey ? 'API Ready' : (hasEncryptedKey ? 'Unlock Key' : 'Setup API Key')}
                </button>
           </div>
         </div>
@@ -467,26 +486,39 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {!hasApiKey && (
+              {!localApiKey && (
                   <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-5 flex flex-col gap-4">
                       <div className="flex items-start gap-3">
                         <Key className="w-5 h-5 text-indigo-400 mt-1 shrink-0" />
                         <div>
                             <p className="text-sm font-bold text-white mb-1">AI Features Disabled</p>
                             <p className="text-xs text-slate-400 leading-relaxed mb-3">
-                                Provide a Gemini API Key to enable forensic analysis, quality scoring, and automated scene documentation.
+                                {hasEncryptedKey 
+                                  ? "Unlock your saved API key to enable forensic analysis." 
+                                  : "Provide a Gemini API Key to enable forensic analysis, quality scoring, and automated scene documentation."}
                             </p>
-                            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 hover:underline">
-                                <ExternalLink size={10} /> Get API Key
-                            </a>
+                            {!hasEncryptedKey && (
+                                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 hover:underline">
+                                    <ExternalLink size={10} /> Get API Key
+                                </a>
+                            )}
                         </div>
                       </div>
-                      <button 
-                        onClick={handleOpenSettings}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-                      >
-                        Setup API Key
-                      </button>
+                      {hasEncryptedKey ? (
+                           <button 
+                             onClick={() => setIsUnlockModalOpen(true)}
+                             className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                           >
+                             <Lock size={14} /> Unlock API Key
+                           </button>
+                      ) : (
+                           <button 
+                             onClick={handleOpenSettings}
+                             className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                           >
+                             Setup API Key
+                           </button>
+                      )}
                   </div>
               )}
 
@@ -548,7 +580,7 @@ const App: React.FC = () => {
                         <DocumentationViewer 
                             data={analysisResult.data} 
                             workflowData={analysisResult.rawWorkflow} 
-                            isOffline={!hasApiKey || aiStatus !== 'complete'} 
+                            isOffline={!localApiKey || aiStatus !== 'complete'} 
                             aiStatus={aiStatus} 
                             isRefiningPrompt={isRefiningPrompt} 
                             onUpdateData={handleUpdateData} 
@@ -581,6 +613,12 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)} 
         onSave={handleSaveLocalKey} 
         currentKey={localApiKey} 
+      />
+
+      <UnlockModal 
+        isOpen={isUnlockModalOpen}
+        onUnlock={handleUnlock}
+        onCancel={handleCancelUnlock}
       />
 
       <ImagePreviewModal 
