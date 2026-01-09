@@ -157,13 +157,15 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files.length > 0) {
-          Array.from(e.target.files).forEach(file => {
+          // Explicitly cast to ensure 'file' is treated as a Blob/File during iteration
+          Array.from(e.target.files as FileList).forEach((file: File) => {
               const reader = new FileReader();
               reader.onloadend = () => {
                   const base64 = (reader.result as string).split(',')[1];
                   setNewNoteImages(prev => [...prev, base64]);
               };
-              reader.readAsDataURL(file);
+              // Added explicit cast to Blob to resolve potential 'unknown' type error in some TS configurations
+              reader.readAsDataURL(file as Blob);
           });
       }
       e.target.value = ''; // reset
@@ -233,9 +235,10 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
       try {
           // Convert current blob src to base64
           const response = await fetch(imgElement.src);
-          const blob = await response.blob();
+          // Explicitly treat the fetched blob as Blob to satisfy FileReader requirements
+          const blob: Blob = await response.blob();
           const reader = new FileReader();
-          // Cast to any to fix type error where blob might be inferred as unknown
+          // Added explicit cast to any or Blob to fix potential type inference issues where blob might be unknown
           reader.readAsDataURL(blob as any);
           reader.onloadend = async () => {
              const base64 = (reader.result as string).split(',')[1];

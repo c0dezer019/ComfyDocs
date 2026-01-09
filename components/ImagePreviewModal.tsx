@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ZoomIn, ZoomOut, Maximize, RotateCcw } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Annotation } from '../types';
 
 interface ImagePreviewModalProps {
@@ -22,53 +22,69 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  
+  // Track natural dimensions to prevent SVG distortion
+  const [imgDims, setImgDims] = useState({ w: 0, h: 0 });
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Reset or Focus when opening
+  // Combine annotations with the focus target
+  const activeAnnotations = initialFocus && !annotations.some(a => 
+    a.box_2d && initialFocus.box_2d && a.box_2d.every((val, i) => val === initialFocus.box_2d[i])
+  ) ? [...annotations, initialFocus] : annotations;
+
+  // Effect to handle initial focus after image is confirmed loaded
   useEffect(() => {
-    if (isOpen) {
-        if (initialFocus && containerRef.current) {
-            focusOnAnnotation(initialFocus);
-        } else {
-            resetView();
-        }
+    if (isOpen && imageLoaded && initialFocus) {
+        focusOnAnnotation(initialFocus);
+    } else if (isOpen && !initialFocus) {
+        resetView();
     }
-  }, [isOpen, initialFocus]);
+  }, [isOpen, imageLoaded, initialFocus]);
 
   const resetView = () => {
       setScale(1);
       setPosition({ x: 0, y: 0 });
   };
 
+  const handleImageLoad = () => {
+    if (imageRef.current) {
+        setImgDims({ 
+            w: imageRef.current.naturalWidth, 
+            h: imageRef.current.naturalHeight 
+        });
+        setImageLoaded(true);
+    }
+  };
+
   const focusOnAnnotation = (ann: Annotation) => {
-      if (!containerRef.current || !imageRef.current) return;
+      if (!containerRef.current || !imageRef.current || !ann.box_2d || imgDims.w === 0) return;
       
       const [ymin, xmin, ymax, xmax] = ann.box_2d;
-      const containerW = containerRef.current.clientWidth;
-      const containerH = containerRef.current.clientHeight;
+      
+      // Get the rendered size of the image (layout size)
+      const layoutW = imageRef.current.clientWidth;
+      const layoutH = imageRef.current.clientHeight;
+
+      if (layoutW === 0 || layoutH === 0) return;
 
       // Calculate center of box in normalized coords (0-1)
       const centerX = (xmin + xmax) / 2;
       const centerY = (ymin + ymax) / 2;
 
-      // Calculate width/height of box relative to image
+      // Calculate box size relative to image
       const boxW = xmax - xmin;
       const boxH = ymax - ymin;
 
-      // Determine Zoom Level: try to fit the box into 50% of the screen, clamped 1x-4x
-      let targetScale = Math.min(1 / boxW, 1 / boxH) * 0.6;
-      targetScale = Math.max(1, Math.min(4, targetScale));
+      // Determine Zoom Level
+      let targetScale = Math.min(0.4 / boxW, 0.4 / boxH);
+      targetScale = Math.max(1.5, Math.min(8, targetScale));
 
-      // Calculate displacement to center the point
-      // Standard center is (0,0) at scale 1.
-      // To shift center: -1 * (nodeCenterRelative - 0.5) * imageSize * scale
-      // Note: We need actual rendered image dimensions if aspect ratio differs, 
-      // but assuming object-contain matches container usually or is centered.
-      // Simplification: Shift based on container dimensions.
-      
-      const offsetX = (0.5 - centerX) * containerW * targetScale;
-      const offsetY = (0.5 - centerY) * containerH * targetScale;
+      // Centering math
+      const offsetX = (0.5 - centerX) * layoutW * targetScale;
+      const offsetY = (0.5 - centerY) * layoutH * targetScale;
 
       setScale(targetScale);
       setPosition({ x: offsetX, y: offsetY });
@@ -77,7 +93,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   const handleWheel = (e: React.WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY * -0.001;
-      const newScale = Math.min(Math.max(1, scale + delta), 8);
+      const newScale = Math.min(Math.max(0.5, scale + delta), 20);
       setScale(newScale);
   };
 
@@ -99,16 +115,16 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   if (!isOpen || !imageSrc) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-300 overflow-hidden">
       
       {/* Header / Controls */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 pointer-events-none">
-          <div className="flex gap-2 pointer-events-auto bg-black/50 p-1 rounded-lg backdrop-blur-sm">
-             <button onClick={() => setScale(s => Math.min(s + 0.5, 8))} className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded"><ZoomIn size={20}/></button>
-             <button onClick={() => setScale(s => Math.max(s - 0.5, 1))} className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded"><ZoomOut size={20}/></button>
-             <button onClick={resetView} className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded" title="Reset View"><RotateCcw size={20}/></button>
+      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-20 pointer-events-none">
+          <div className="flex gap-2 pointer-events-auto bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 backdrop-blur-md">
+             <button onClick={() => setScale(s => Math.min(s + 1, 20))} className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><ZoomIn size={20}/></button>
+             <button onClick={() => setScale(s => Math.max(s - 1, 0.5))} className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><ZoomOut size={20}/></button>
+             <button onClick={resetView} className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Reset View"><RotateCcw size={20}/></button>
           </div>
-          <button onClick={onClose} className="pointer-events-auto p-2 bg-black/50 hover:bg-white/10 text-slate-300 hover:text-white rounded-lg transition-colors">
+          <button onClick={onClose} className="pointer-events-auto p-3 bg-slate-900/80 hover:bg-rose-600 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition-all">
               <X size={24} />
           </button>
       </div>
@@ -116,7 +132,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       {/* Image Container */}
       <div 
         ref={containerRef}
-        className="flex-1 w-full h-full overflow-hidden flex items-center justify-center cursor-move select-none"
+        className="flex-1 w-full h-full overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -126,64 +142,123 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           <div 
              style={{ 
                  transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                 transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+                 transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)',
+                 transformOrigin: 'center center'
              }}
-             className="relative max-w-full max-h-full"
+             className="relative flex items-center justify-center transition-transform"
           >
               <img 
                 ref={imageRef}
                 src={imageSrc} 
-                alt="Preview" 
-                className="max-w-full max-h-[90vh] object-contain shadow-2xl" 
+                onLoad={handleImageLoad}
+                alt="Forensic View" 
+                className="max-w-none max-h-[85vh] shadow-2xl rounded-sm border border-white/5" 
                 draggable={false}
               />
               
               {/* Overlay Annotations */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {annotations.map((ann, idx) => {
-                      const [ymin, xmin, ymax, xmax] = ann.box_2d;
-                      const width = (xmax - xmin) * 100;
-                      const height = (ymax - ymin) * 100;
-                      const x = xmin * 100;
-                      const y = ymin * 100;
+              {imageLoaded && imgDims.w > 0 && (
+                <svg 
+                    className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" 
+                    viewBox={`0 0 ${imgDims.w} ${imgDims.h}`}
+                >
+                    {activeAnnotations.map((ann, idx) => {
+                        if (!ann.box_2d) return null;
+                        const [ymin, xmin, ymax, xmax] = ann.box_2d;
+                        
+                        // Map normalized 0-1 to pixel coordinates
+                        const width = (xmax - xmin) * imgDims.w;
+                        const height = (ymax - ymin) * imgDims.h;
+                        const x = xmin * imgDims.w;
+                        const y = ymin * imgDims.h;
 
-                      if (ann.style === 'box') {
-                          return (
-                              <g key={idx}>
+                        const isFocused = initialFocus && initialFocus.box_2d && ann.box_2d && 
+                                        initialFocus.box_2d.every((v, i) => Math.abs(v - ann.box_2d[i]) < 0.001);
+
+                        // Use distinct colors
+                        const color = isFocused ? "#f43f5e" : "#6366f1"; // Rose for focus, Indigo for others
+                        
+                        // Dynamic label positioning to avoid edge clipping
+                        // If box is on the right half, draw label to the left.
+                        const isRightSide = (xmin + xmax) / 2 > 0.5;
+                        const isTopSide = ymin < 0.1;
+                        
+                        // Leader line configuration
+                        const leaderLength = Math.max(imgDims.w, imgDims.h) * 0.05; // 5% leader line
+                        const elbowOffset = leaderLength * 0.5;
+                        
+                        // Origin on the box (corner)
+                        const originX = isRightSide ? x : x + width;
+                        const originY = y; // Top corner
+
+                        // Destination for text
+                        const destX = isRightSide ? originX - leaderLength : originX + leaderLength;
+                        const destY = isTopSide ? originY + height + elbowOffset : originY - elbowOffset;
+                        
+                        // Elbow Point
+                        const elbowX = isRightSide ? originX - elbowOffset : originX + elbowOffset;
+                        const elbowY = originY;
+
+                        return (
+                            <g key={idx}>
+                                {/* Bounding Box - Always use box style for clarity as requested */}
                                 <rect 
-                                    x={`${x}%`} y={`${y}%`} width={`${width}%`} height={`${height}%`} 
+                                    x={x} y={y} width={width} height={height} 
                                     fill="none" 
-                                    stroke="#ef4444" // red-500
-                                    strokeWidth="0.5" // Scaled by viewBox
+                                    stroke={color} 
+                                    strokeWidth="2" // Base stroke, scaled down by vector-effect
                                     vectorEffect="non-scaling-stroke"
-                                    className="animate-pulse"
+                                    className={isFocused ? "animate-pulse" : ""}
                                 />
-                                <text x={`${x}%`} y={`${y - 1}%`} fill="#ef4444" fontSize="3" fontWeight="bold">{ann.label}</text>
-                              </g>
-                          );
-                      } else {
-                          // Paint style: translucent fill
-                          return (
-                              <g key={idx}>
-                                  <rect 
-                                      x={`${x}%`} y={`${y}%`} width={`${width}%`} height={`${height}%`} 
-                                      fill="rgba(244, 63, 94, 0.3)" // rose-500 low opacity
-                                      stroke="rgba(244, 63, 94, 0.6)"
-                                      strokeWidth="0.2"
-                                      vectorEffect="non-scaling-stroke"
-                                  />
-                              </g>
-                          );
-                      }
-                  })}
-              </svg>
+                                
+                                {/* Leader Line: Box -> Elbow -> Text */}
+                                <path 
+                                    d={`M ${originX} ${originY} L ${destX} ${destY}`}
+                                    stroke={color}
+                                    strokeWidth="1.5"
+                                    fill="none"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+                                <line 
+                                    x1={destX} y1={destY} 
+                                    x2={isRightSide ? destX - (imgDims.w * 0.02) : destX + (imgDims.w * 0.02)} 
+                                    y2={destY} 
+                                    stroke={color}
+                                    strokeWidth="1.5"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+
+                                {/* Label Text */}
+                                <text 
+                                    x={isRightSide ? destX - (imgDims.w * 0.005) : destX + (imgDims.w * 0.005)} 
+                                    y={destY} 
+                                    fill={color} 
+                                    fontSize={Math.max(imgDims.w, imgDims.h) * 0.02} // Responsive font size
+                                    fontWeight="700"
+                                    textAnchor={isRightSide ? "end" : "start"}
+                                    alignmentBaseline="middle"
+                                    style={{ 
+                                        textShadow: '0px 2px 4px rgba(0,0,0,0.9)', 
+                                        fontFamily: 'monospace',
+                                        pointerEvents: 'none'
+                                    }}
+                                >
+                                    {ann.label.toUpperCase()}
+                                </text>
+                            </g>
+                        );
+                    })}
+                </svg>
+              )}
           </div>
       </div>
       
-      {/* Legend / Info */}
-      <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
-          <div className="bg-black/60 backdrop-blur px-4 py-2 rounded-full text-xs text-slate-300 border border-white/10">
-              Scroll to Zoom • Drag to Pan
+      {/* Footer Info */}
+      <div className="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-none">
+          <div className="bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border border-slate-800 shadow-2xl flex items-center gap-6">
+              <div className="flex items-center gap-2"><span className="text-white">Scroll</span> Zoom</div>
+              <div className="flex items-center gap-2"><span className="text-white">Drag</span> Pan</div>
+              <div className="flex items-center gap-2 text-indigo-400 font-black">{scale.toFixed(1)}x MAGNIFICATION</div>
           </div>
       </div>
 

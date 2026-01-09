@@ -2,9 +2,21 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SceneDocumentation, PromptAnalysis, QualityIssue, Annotation } from "../types";
 
-// Helper to get effective API key from local storage
+// Helper to get effective API key from cookies
 const getApiKey = (): string => {
-  return localStorage.getItem('gemini_api_key') || '';
+  const name = 'gemini_api_key=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const ca = decodedCookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) === 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return '';
 };
 
 export const generateSceneDocumentation = async (

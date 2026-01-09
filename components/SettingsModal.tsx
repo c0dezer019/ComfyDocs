@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Key, ShieldCheck, ExternalLink, Trash2, Check, AlertCircle, Info, ChevronDown, ChevronRight, CreditCard, Eye, EyeOff } from 'lucide-react';
+import { X, Key, ShieldCheck, ExternalLink, Trash2, Check, AlertCircle, Info, ChevronDown, ChevronRight, CreditCard, Eye, EyeOff, Lock } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -31,7 +31,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       return;
     }
     if (!trimmed.startsWith('AIza')) {
-       setError("This doesn't look like a valid Google Gemini API Key (usually starts with 'AIza').");
+       setError("This doesn't look like a valid Google Gemini API Key (starts with 'AIza').");
        return;
     }
     
@@ -54,11 +54,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
   return (
     <div 
-        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
         onClick={handleBackdropClick}
     >
       <div 
-          className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+          className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]"
           onClick={(e) => e.stopPropagation()}
       >
         
@@ -66,9 +66,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-900/50 shrink-0">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
-                <Key size={20} />
+                <Lock size={20} />
              </div>
-             <h2 className="text-xl font-semibold text-white">API Settings</h2>
+             <h2 className="text-xl font-semibold text-white">Secure Configuration</h2>
           </div>
           <button 
             onClick={onClose}
@@ -85,10 +85,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             <div className="bg-indigo-900/20 border border-indigo-900/50 rounded-lg p-4 flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-indigo-400 mt-0.5 shrink-0" />
               <div className="text-sm text-indigo-200">
-                <p className="font-semibold mb-1">Secure Local Storage</p>
-                <p className="opacity-80 leading-relaxed">
-                  Your API key is stored locally in your browser's localStorage. 
-                  It is never uploaded to any server other than Google's Gemini API during requests.
+                <p className="font-semibold mb-1">Session Cookie Storage</p>
+                <p className="opacity-80 leading-relaxed text-xs">
+                  Your key is stored in a cookie with <span className="text-indigo-300 font-bold">SameSite=Strict</span> and <span className="text-indigo-300 font-bold">Secure</span> flags. 
+                  <br /><br />
+                  <span className="opacity-60 italic">* Note: HttpOnly is a server-side flag. This client-side implementation uses the most restrictive flags possible in a browser environment.</span>
                 </p>
               </div>
             </div>
@@ -106,7 +107,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                       setError(null);
                   }}
                   placeholder="AIzaSy..."
-                  className={`w-full bg-slate-950 border ${error ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-indigo-500'} rounded-lg py-2.5 pl-4 pr-12 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm`}
+                  className={`w-full bg-slate-950 border ${error ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-indigo-500'} rounded-lg py-2.5 pl-4 pr-12 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm shadow-inner`}
                   autoFocus
                 />
                 <button 
@@ -134,7 +135,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 >
                     <span className="flex items-center gap-2">
                         <Info size={16} className="text-indigo-400"/> 
-                        How to get a supported API Key
+                        How to get an API Key
                     </span>
                     {showInstructions ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </button>
@@ -143,22 +144,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     <div className="p-4 text-sm text-slate-400 space-y-3 border-t border-slate-800 animate-in slide-in-from-top-2 duration-200">
                         <ol className="list-decimal list-inside space-y-3 ml-1">
                             <li>
-                                Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 hover:underline inline-flex items-center gap-0.5">Google AI Studio <ExternalLink size={10} /></a>.
+                                Access the <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 hover:underline inline-flex items-center gap-0.5">Google AI Studio <ExternalLink size={10} /></a> dashboard.
                             </li>
                             <li>
-                                Click <strong>Create API Key</strong>. You can create one in a new project or select an existing Google Cloud project.
+                                Create a new API Key for your project.
                             </li>
                             <li>
-                                <strong>Setup Billing:</strong> For full access to models like Gemini 1.5 Pro, ensure your project is linked to a billing account.
+                                <strong>Setup Billing:</strong> Forensic documentation requires a linked billing account on the GCP project for Gemini 1.5 Pro access.
                                 <div className="mt-1.5 ml-0 sm:ml-4">
                                     <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded text-xs transition-colors border border-slate-700">
                                         <CreditCard size={12} />
-                                        View Billing Documentation
+                                        Billing Docs
                                     </a>
                                 </div>
                             </li>
                             <li>
-                                Copy the key (starts with <code>AIza</code>) and paste it above.
+                                Paste the <code>AIza</code> token into the field above.
                             </li>
                         </ol>
                     </div>
@@ -175,10 +176,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors"
                 >
                     <Trash2 size={16} />
-                    Remove Key
+                    Clear Session
                 </button>
             ) : (
-                <div></div>
+                <div />
             )}
           
           <div className="flex gap-3">
@@ -193,7 +194,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
             >
               <Check size={16} />
-              Save Key
+              Commit Key
             </button>
           </div>
         </div>

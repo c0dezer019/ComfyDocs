@@ -12,15 +12,39 @@ import { SettingsModal } from './components/SettingsModal';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { ProcessingState, AnalysisResult, ComfyMetadata, SceneDocumentation, QualityIssue, SceneNote, Annotation } from './types';
 
+// Cookie utilities
+const setCookie = (name: string, value: string, days?: number) => {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    // We attempt to be as secure as possible in a client-side environment.
+    // Note: HttpOnly is NOT possible via JavaScript, so we use Secure and SameSite=Strict.
+    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Strict; Secure";
+};
+
+const getCookie = (name: string): string => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return '';
+};
+
 const App: React.FC = () => {
   const [processingState, setProcessingState] = useState<ProcessingState>({ status: 'idle' });
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'complete' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRefiningPrompt, setIsRefiningPrompt] = useState(false);
   
-  // Key Management State
+  // Key Management State (Cookie Based)
   const [localApiKey, setLocalApiKey] = useState<string>(() => {
-    return localStorage.getItem('gemini_api_key') || '';
+    return getCookie('gemini_api_key');
   });
   
   const [hasApiKey, setHasApiKey] = useState<boolean>(false); 
@@ -158,9 +182,7 @@ const App: React.FC = () => {
   };
 
   const performAiAnalysis = async (file: File, workflowStr: string, promptStr: string, hash: string) => {
-      // Ensure key is ready before starting
-      // Retrieve key directly from localStorage to avoid stale state closures
-      const apiKey = localStorage.getItem('gemini_api_key');
+      const apiKey = getCookie('gemini_api_key');
       
       if (!apiKey || !apiKey.startsWith('AIza')) {
           setHasApiKey(false);
@@ -216,10 +238,9 @@ const App: React.FC = () => {
   const handleSaveLocalKey = async (key: string) => {
       setLocalApiKey(key);
       if (key) {
-        localStorage.setItem('gemini_api_key', key);
+        setCookie('gemini_api_key', key, 7); // Persistent for 7 days
         // If we have a file loaded and are currently in an offline/partial state, trigger AI now
         if (currentFile && metadata && currentFileHash) {
-            // Slight delay to ensure localStorage propagation and state updates
             setTimeout(() => {
                 const workflowStr = JSON.stringify(metadata.workflow || {});
                 const promptStr = JSON.stringify(metadata.prompt || {});
@@ -227,7 +248,7 @@ const App: React.FC = () => {
             }, 0);
         }
       } else {
-        localStorage.removeItem('gemini_api_key');
+        setCookie('gemini_api_key', '', -1); // Clear cookie
       }
   };
 
