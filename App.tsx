@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileJson, FileText, Image as ImageIcon, Sparkles, Loader2, AlertCircle, ChevronLeft, RefreshCw, Database, ArrowLeft, Key, ExternalLink, Settings, ZoomIn, Lock, Info } from 'lucide-react';
+import { Upload, FileJson, FileText, Image as ImageIcon, Sparkles, Loader2, AlertCircle, ChevronLeft, RefreshCw, Database, ArrowLeft, Key, ExternalLink, Settings, ZoomIn, Lock, Info, ScrollText } from 'lucide-react';
 import { extractComfyMetadata } from './utils/pngParser';
 import { generateSceneDocumentation, askQuestion, refreshPromptAnalysis, generateIssueFix, generateIssuesFromNotes } from './services/geminiService';
 import { analyzeWorkflowLocally } from './utils/workflowAnalyzer';
@@ -7,6 +8,7 @@ import { calculateFileHash, getCachedAnalysis, cacheAnalysis } from './utils/cac
 import { encrypt, decrypt } from './utils/encryption';
 import { JsonViewer } from './components/JsonViewer';
 import { DocumentationViewer } from './components/DocumentationViewer';
+import { ReportViewer } from './components/ReportViewer';
 import { Landing } from './components/Landing';
 import { SettingsModal } from './components/SettingsModal';
 import { UnlockModal } from './components/UnlockModal';
@@ -37,9 +39,11 @@ const App: React.FC = () => {
   
   const [metadata, setMetadata] = useState<ComfyMetadata | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'docs' | 'workflow' | 'metadata'>('docs');
+  const [activeTab, setActiveTab] = useState<'docs' | 'report' | 'workflow' | 'metadata'>('docs');
   
-  const [showLanding, setShowLanding] = useState<boolean>(true);
+  const [showLanding, setShowLanding] = useState<boolean>(() => {
+    return localStorage.getItem('comfydocs_seen_landing') !== 'true';
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,8 +74,14 @@ const App: React.FC = () => {
       setIsImageModalOpen(true);
   };
 
+  const handleGetStarted = () => {
+    localStorage.setItem('comfydocs_seen_landing', 'true');
+    setShowLanding(false);
+  };
+
   const resetState = () => {
-    setShowLanding(true);
+    // Return to the Uploader/Dashboard, never the landing page if they've already started
+    setShowLanding(false); 
     setPreviewUrl(null);
     setCurrentFile(null);
     setAnalysisResult(null);
@@ -119,11 +129,8 @@ const App: React.FC = () => {
         const hash = await calculateFileHash(file);
         setCurrentFileHash(hash);
         
-        const [cachedData, extracted] = await Promise.all([
-            getCachedAnalysis(hash),
-            extractComfyMetadata(file)
-        ]);
-
+        // Extract metadata first to check for embedded report
+        const extracted = await extractComfyMetadata(file);
         setMetadata(extracted);
         
         if (!extracted.workflow && !extracted.prompt) {
@@ -137,12 +144,31 @@ const App: React.FC = () => {
         const workflowStr = JSON.stringify(extracted.workflow || {});
         const promptStr = JSON.stringify(extracted.prompt || {});
 
+        // 1. Check for Embedded Report (Priority)
+        if (extracted.report) {
+            setAnalysisResult({ 
+                data: extracted.report, 
+                workflowJson: workflowStr, 
+                promptJson: promptStr, 
+                rawWorkflow: extracted.workflow 
+            });
+            setAiStatus('complete');
+            setProcessingState({ status: 'complete' });
+            // Cache it for future reference even if we loaded from file
+            cacheAnalysis(hash, extracted.report).catch(console.error);
+            return;
+        }
+
+        // 2. Check Cache
+        const cachedData = await getCachedAnalysis(hash);
+
         if (cachedData) {
             setAnalysisResult({ data: cachedData, workflowJson: workflowStr, promptJson: promptStr, rawWorkflow: extracted.workflow });
             setAiStatus('complete');
             setIsLoadedFromCache(true);
             setProcessingState({ status: 'complete' });
         } else {
+            // 3. New Analysis
             const localDoc = analyzeWorkflowLocally(extracted.workflow || { nodes: [], links: [] });
             setAnalysisResult({ data: localDoc, workflowJson: workflowStr, promptJson: promptStr, rawWorkflow: extracted.workflow });
             setProcessingState({ status: 'complete' });
@@ -169,7 +195,6 @@ const App: React.FC = () => {
       setErrorMessage(null);
       try {
           const base64Data = await fileToBase64(file);
-          // Note: generateSceneDocumentation reads from sessionStorage, but we ensure it's set before calling this.
           const aiDoc = await generateSceneDocumentation(base64Data, workflowStr, promptStr);
           aiDoc.isOffline = false;
           
@@ -379,7 +404,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen text-slate-200 flex flex-col font-sans selection:bg-indigo-500/30">
-      <header className="glass sticky top-0 z-50 border-b border-white/5">
+      <header className="glass sticky top-0 z-50 border-b border-white/5 no-print">
         <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer group" onClick={resetState}>
             <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-300">
@@ -400,13 +425,12 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-8">
-        {!previewUrl && (showLanding ? <Landing onGetStarted={() => setShowLanding(false)} /> : (
+        {/* Hidden Input Moved Here for Persistent Access */}
+        <input type="file" ref={fileInputRef} className="hidden" accept="image/png" onChange={handleFileChange} />
+
+        {!previewUrl && (showLanding ? <Landing onGetStarted={handleGetStarted} /> : (
             <div className="flex flex-col items-center max-w-2xl mx-auto pt-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <button onClick={() => setShowLanding(true)} className="self-start mb-6 text-slate-500 hover:text-slate-300 text-sm font-medium flex items-center gap-2 transition-colors">
-                    <ChevronLeft size={16} /> Back to Dashboard
-                </button>
                 <div className="w-full glass-card rounded-3xl p-16 flex flex-col items-center justify-center text-center hover:border-indigo-500/50 cursor-pointer group" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/png" onChange={handleFileChange} />
                     <div className="w-24 h-24 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ring-1 ring-white/10">
                         <Upload className="w-10 h-10 text-indigo-400" />
                     </div>
@@ -424,7 +448,7 @@ const App: React.FC = () => {
 
         {previewUrl && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            <div className="lg:col-span-3 flex flex-col gap-6 lg:sticky lg:top-24">
+            <div className="lg:col-span-3 flex flex-col gap-6 lg:sticky lg:top-24 no-print">
               <div className="glass-card rounded-2xl p-4">
                 <div className="aspect-square relative rounded-xl overflow-hidden bg-slate-950/50 flex items-center justify-center group/preview ring-1 ring-white/5">
                   <img src={previewUrl} alt="ComfyUI Generation" className="max-w-full max-h-full object-contain" />
@@ -493,8 +517,9 @@ const App: React.FC = () => {
                 </div>
               ) : processingState.status === 'complete' && analysisResult && metadata ? (
                 <>
-                  <nav className="flex gap-1 mb-8 bg-white/5 p-1 rounded-2xl w-fit shrink-0 backdrop-blur-sm ring-1 ring-white/10">
+                  <nav className="flex gap-1 mb-8 bg-white/5 p-1 rounded-2xl w-fit shrink-0 backdrop-blur-sm ring-1 ring-white/10 no-print">
                     <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText size={16}/>} label="Overview" />
+                    <TabButton active={activeTab === 'report'} onClick={() => setActiveTab('report')} icon={<ScrollText size={16}/>} label="Report" />
                     <TabButton active={activeTab === 'workflow'} onClick={() => setActiveTab('workflow')} icon={<FileJson size={16}/>} label="Workflow" />
                     <TabButton active={activeTab === 'metadata'} onClick={() => setActiveTab('metadata')} icon={<ImageIcon size={16}/>} label="Raw Data" />
                   </nav>
@@ -513,6 +538,14 @@ const App: React.FC = () => {
                             onAskAi={handleAskAi}
                             onGenerateIssuesFromNotes={handleGenerateIssuesFromNotes} 
                             onFocusRegion={handleOpenImagePreview}
+                        />
+                    )}
+                    {activeTab === 'report' && (
+                        <ReportViewer 
+                            data={analysisResult.data} 
+                            imageSrc={previewUrl} 
+                            originalFile={currentFile}
+                            fileHash={currentFileHash}
                         />
                     )}
                     {activeTab === 'workflow' && <div className="space-y-6">

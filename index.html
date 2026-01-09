@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -70,6 +71,53 @@
         background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+      }
+
+      /* Print Styles for PDF Export */
+      @media print {
+        body {
+          background: white;
+          color: black;
+          background-image: none;
+        }
+        
+        .no-print {
+           display: none !important;
+        }
+
+        /* Use visibility to hide everything by default, then show print-only.
+           This avoids 'display: none' breaking layout flow for portals or root. */
+        body * {
+          visibility: hidden;
+        }
+
+        #root {
+            display: block !important;
+        }
+
+        /* Show the specific print container */
+        .print-only, .print-only * {
+          visibility: visible;
+        }
+
+        .print-only {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          margin: 0;
+          background: white;
+          color: black;
+          z-index: 9999;
+        }
+
+        .page-break {
+          page-break-before: always;
+        }
+        
+        .avoid-break {
+          page-break-inside: avoid;
+        }
       }
     </style>
   <script type="importmap">

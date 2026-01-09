@@ -118,6 +118,7 @@ export const generateSceneDocumentation = async (
     - Provide unique 'suggestedFixes' for every quality issue.
     - Score adherence 1-10.
     - If an issue is localized to a specific area (like a hand, face, or artifact), provide the 2D bounding box (ymin, xmin, ymax, xmax).
+    - **CRITICAL**: If severity is 'Note', the score penalty MUST be 0.
   `;
 
   try {
@@ -141,6 +142,8 @@ export const generateSceneDocumentation = async (
         parsed.qualityAnalysis.issues.forEach(issue => {
           issue.confidence = 100;
           issue.passCount = 1;
+          // Enforce 0 score for Notes
+          if (issue.severity === 'Note') issue.score = 0;
         });
       }
       return parsed;
@@ -204,7 +207,7 @@ export const runConsensusQualityAnalysis = async (
     2. Calculate 'confidence' (percentage 0-100) based on how many times the issue appeared across the ${passCount} passes. (e.g. if found in 2 of 3 passes, confidence is 66).
     3. Return a clean, consolidated list.
     4. Provide specific technical 'suggestedFixes' for each issue.
-    5. Assign severity and a score penalty (0.1 - 2.0).
+    5. Assign severity and a score penalty (0.1 - 2.0). **If severity is 'Note', score penalty MUST be 0.**
     6. **CRITICAL**: For each issue, identify its location in the image. Provide a 2D bounding box [ymin, xmin, ymax, xmax] (normalized 0-1). If the issue is global (e.g. "blurry"), leave box_2d empty.
     7. Select 'box' style for distinct objects, 'paint' for surface textures.
   `;
@@ -246,7 +249,8 @@ export const runConsensusQualityAnalysis = async (
   return (parsed.issues || []).map((i: QualityIssue) => ({
     ...i,
     passCount: passCount,
-    id: crypto.randomUUID()
+    id: crypto.randomUUID(),
+    score: i.severity === 'Note' ? 0 : i.score
   }));
 };
 
@@ -328,6 +332,7 @@ export const generateIssuesFromNotes = async (
       2. Convert actionable points from these notes into formal technical quality issues or suggestions.
       3. If the note describes a defect, categorize it and suggest a fix.
       4. If the note describes an idea supported by reference images, format it as a 'Note' severity item with implementation suggestions on how to achieve that look better.
+      5. **If severity is 'Note', score penalty MUST be 0.**
     `;
 
     parts.push({ text: prompt });
@@ -368,7 +373,8 @@ export const generateIssuesFromNotes = async (
               confidence: 100,
               passCount: 1,
               id: crypto.randomUUID(),
-              userNotes: "Generated from Scene Notes"
+              userNotes: "Generated from Scene Notes",
+              score: i.severity === 'Note' ? 0 : i.score
           }));
       }
       throw new Error("Empty response");

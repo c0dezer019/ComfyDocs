@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { SceneDocumentation, QualityIssue, SceneNote, Annotation } from '../types';
 import { Layers, Zap, Sliders, MessageSquare, Quote, Info, Loader2, AlertTriangle, Wand2, CheckCircle2, X, Plus, Edit2, Trash2, Save, XCircle, Bot, Send, RefreshCw, ArrowRight, Target, Gauge, StickyNote, Check, Filter, NotebookPen, Sparkles, Image as ImageIcon, BookOpen, ScanEye, Eye } from 'lucide-react';
@@ -223,6 +224,10 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
   const handleSaveIssue = async (index: number, updatedIssue: QualityIssue) => {
       if (!data.qualityAnalysis) return;
       const originalIssue = data.qualityAnalysis.issues[index];
+      
+      // Ensure score is 0 if severity is Note
+      if (updatedIssue.severity === 'Note') updatedIssue.score = 0;
+      
       const noteChanged = originalIssue.userNotes !== updatedIssue.userNotes;
       const descChanged = originalIssue.description !== updatedIssue.description;
       const newIssues = [...data.qualityAnalysis.issues];
@@ -240,12 +245,17 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
 
   const handleAddIssue = async () => {
       if (!newIssue || !newIssue.description || !data.qualityAnalysis) return;
+      
+      const severity = (newIssue.severity as any) || 'Minor';
+      // Default score based on severity, strictly 0 for Note
+      const score = severity === 'Note' ? 0 : (newIssue.score || 0.5);
+
       const issueToAdd: QualityIssue = {
           id: crypto.randomUUID(),
           type: newIssue.type || 'Manual Entry',
           description: newIssue.description,
-          severity: (newIssue.severity as any) || 'Minor',
-          score: newIssue.score || 0.5,
+          severity: severity,
+          score: score,
           suggestedFixes: ["Generating fix..."],
           confidence: 100,
           passCount: 1,
@@ -462,7 +472,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                                 <div className="flex items-start gap-6">
                                     <div className="flex flex-col gap-2 shrink-0">
                                         <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border text-center ${getSeverityColor(issue.severity)}`}>
-                                            {issue.severity}
+                                            {issue.severity === 'Note' ? '-' : issue.severity}
                                         </div>
                                         {issue.confidence !== undefined && (
                                             <div className={`px-3 py-1 rounded-lg text-[9px] font-mono border text-center ${getConfidenceColor(issue.confidence)}`}>
@@ -519,6 +529,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                           <h4 className="text-sm font-black text-indigo-300 uppercase tracking-widest">New Manual Entry</h4>
                           <div className="flex gap-4">
                                 <select className="bg-slate-950 border border-white/10 rounded-xl text-xs font-bold text-slate-300 px-4" value={newIssue.severity || 'Minor'} onChange={(e) => setNewIssue({ ...newIssue, severity: e.target.value as any })}>
+                                    <option value="Note">Note</option>
                                     <option value="Minor">Minor</option>
                                     <option value="Major">Major</option>
                                     <option value="Critical">Critical</option>

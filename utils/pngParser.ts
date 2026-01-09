@@ -1,4 +1,5 @@
-import { ComfyMetadata } from '../types';
+
+import { ComfyMetadata, SceneDocumentation } from '../types';
 
 /**
  * Extracts text chunks specifically for ComfyUI metadata (workflow, prompt)
@@ -10,7 +11,7 @@ export const extractComfyMetadata = async (file: File): Promise<ComfyMetadata> =
   const textDecoder = new TextDecoder('utf-8');
   
   let offset = 8; // Skip PNG signature (8 bytes)
-  const metadata: ComfyMetadata = { workflow: null, prompt: null };
+  const metadata: ComfyMetadata = { workflow: null, prompt: null, report: null };
 
   while (offset < buffer.byteLength) {
     // Read Chunk Length (4 bytes)
@@ -22,7 +23,7 @@ export const extractComfyMetadata = async (file: File): Promise<ComfyMetadata> =
     const type = String.fromCharCode(...typeBytes);
     offset += 4;
 
-    // We only care about tEXt chunks for ComfyUI
+    // We only care about tEXt chunks for ComfyUI and ComfyDocs
     if (type === 'tEXt') {
       const chunkData = new Uint8Array(buffer, offset, length);
       // tEXt format: Keyword + null separator + Text
@@ -43,6 +44,12 @@ export const extractComfyMetadata = async (file: File): Promise<ComfyMetadata> =
             metadata.prompt = JSON.parse(text);
           } catch (e) {
             console.error('Failed to parse prompt JSON', e);
+          }
+        } else if (keyword === 'ComfyDocs_Report') {
+          try {
+            metadata.report = JSON.parse(text) as SceneDocumentation;
+          } catch (e) {
+            console.error('Failed to parse embedded report JSON', e);
           }
         }
       }

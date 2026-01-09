@@ -13,11 +13,6 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted }) => {
       <div className="text-center max-w-5xl mx-auto px-4 relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
         
-        <div className="inline-flex items-center justify-center p-2 mb-8 bg-slate-900/50 border border-indigo-500/30 rounded-full shadow-lg backdrop-blur-md ring-1 ring-white/10 px-4 py-1.5 animate-in slide-in-from-bottom-2 duration-700 delay-100">
-          <Sparkles className="w-4 h-4 text-indigo-400 mr-2" />
-          <span className="text-xs sm:text-sm font-medium text-indigo-200">New: Multi-Pass Forensic Analysis</span>
-        </div>
-
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-8 leading-tight animate-in slide-in-from-bottom-3 duration-700 delay-200">
           The Forensic Tool for <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-sky-400">
@@ -35,7 +30,7 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted }) => {
             onClick={onGetStarted}
             className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold text-lg transition-all shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-1 w-full sm:w-auto"
             >
-            Analyze Image
+            Get Started
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
         </div>

@@ -2,6 +2,7 @@
 export interface ComfyMetadata {
   workflow: any | null;
   prompt: any | null;
+  report?: SceneDocumentation | null;
 }
 
 export interface ProcessingState {
