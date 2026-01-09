@@ -1,6 +1,5 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileJson, FileText, Image as ImageIcon, Sparkles, Loader2, AlertCircle, ChevronLeft, RefreshCw, Database, ArrowLeft, Key, ExternalLink, Settings, ZoomIn, Lock } from 'lucide-react';
+import { Upload, FileJson, FileText, Image as ImageIcon, Sparkles, Loader2, AlertCircle, ChevronLeft, RefreshCw, Database, ArrowLeft, Key, ExternalLink, Settings, ZoomIn, Lock, Info } from 'lucide-react';
 import { extractComfyMetadata } from './utils/pngParser';
 import { generateSceneDocumentation, askQuestion, refreshPromptAnalysis, generateIssueFix, generateIssuesFromNotes } from './services/geminiService';
 import { analyzeWorkflowLocally } from './utils/workflowAnalyzer';
@@ -20,13 +19,11 @@ const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRefiningPrompt, setIsRefiningPrompt] = useState(false);
   
-  // Key Management State
-  const [localApiKey, setLocalApiKey] = useState<string>(''); // Active decrypted key (memory)
+  const [localApiKey, setLocalApiKey] = useState<string>('');
   const [hasEncryptedKey, setHasEncryptedKey] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   
-  // Image Preview Modal State
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [focusAnnotation, setFocusAnnotation] = useState<Annotation | null>(null);
   const [allAnnotations, setAllAnnotations] = useState<Annotation[]>([]);
@@ -45,12 +42,10 @@ const App: React.FC = () => {
   const [showLanding, setShowLanding] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check for encrypted key on mount
   useEffect(() => {
     const encrypted = localStorage.getItem('gemini_api_key_encrypted');
     if (encrypted) {
         setHasEncryptedKey(true);
-        // If we don't have a session key yet, ask to unlock
         const sessionKey = sessionStorage.getItem('gemini_api_key_decrypted');
         if (sessionKey) {
             setLocalApiKey(sessionKey);
@@ -60,7 +55,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Aggregate annotations from QA history for the modal overlay
   useEffect(() => {
     if (analysisResult?.data.qa) {
         const anns = analysisResult.data.qa.flatMap(q => q.annotations || []);
@@ -70,10 +64,7 @@ const App: React.FC = () => {
     }
   }, [analysisResult?.data.qa]);
 
-  const handleOpenSettings = () => {
-    setIsSettingsOpen(true);
-  };
-
+  const handleOpenSettings = () => setIsSettingsOpen(true);
   const handleOpenImagePreview = (annotation?: Annotation) => {
       setFocusAnnotation(annotation || null);
       setIsImageModalOpen(true);
@@ -156,9 +147,8 @@ const App: React.FC = () => {
             setAnalysisResult({ data: localDoc, workflowJson: workflowStr, promptJson: promptStr, rawWorkflow: extracted.workflow });
             setProcessingState({ status: 'complete' });
             
-            // Automatically start AI analysis if key is present
             if (localApiKey) {
-                await performAiAnalysis(file, workflowStr, promptStr, hash);
+                await performAiAnalysis(file, workflowStr, promptStr, hash, localApiKey);
             }
         }
     } catch (error: any) {
@@ -166,15 +156,12 @@ const App: React.FC = () => {
     }
   };
 
-  const performAiAnalysis = async (file: File, workflowStr: string, promptStr: string, hash: string) => {
-      // NOTE: geminiService now reads the decrypted key from sessionStorage.
-      // We check here for UI state.
-      if (!localApiKey || !localApiKey.startsWith('AIza')) {
-          if (hasEncryptedKey) {
-              setIsUnlockModalOpen(true);
-          } else {
-              setIsSettingsOpen(true);
-          }
+  const performAiAnalysis = async (file: File, workflowStr: string, promptStr: string, hash: string, apiKey?: string) => {
+      const effectiveKey = apiKey || localApiKey;
+      
+      if (!effectiveKey || !effectiveKey.startsWith('AIza')) {
+          if (hasEncryptedKey) setIsUnlockModalOpen(true);
+          else setIsSettingsOpen(true);
           return;
       }
 
@@ -182,12 +169,12 @@ const App: React.FC = () => {
       setErrorMessage(null);
       try {
           const base64Data = await fileToBase64(file);
+          // Note: generateSceneDocumentation reads from sessionStorage, but we ensure it's set before calling this.
           const aiDoc = await generateSceneDocumentation(base64Data, workflowStr, promptStr);
           aiDoc.isOffline = false;
           
           setAnalysisResult(prev => {
               const newData = { ...aiDoc };
-              // Preserve existing user data
               if (prev?.data) {
                   if (prev.data.userSceneNotes) newData.userSceneNotes = prev.data.userSceneNotes;
                   if (prev.data.sceneBackstory) newData.sceneBackstory = prev.data.sceneBackstory;
@@ -212,7 +199,7 @@ const App: React.FC = () => {
           setAiStatus('complete');
       } catch (error: any) {
           if (error.message === 'API_KEY_NOT_FOUND') {
-              setLocalApiKey(''); // Reset invalid key
+              setLocalApiKey('');
               setAiStatus('error');
               setErrorMessage("Valid API key required.");
               setIsSettingsOpen(true);
@@ -229,49 +216,42 @@ const App: React.FC = () => {
       
       const decrypted = decrypt(encrypted, password);
       if (decrypted && decrypted.startsWith('AIza')) {
-          setLocalApiKey(decrypted);
           sessionStorage.setItem('gemini_api_key_decrypted', decrypted);
+          setLocalApiKey(decrypted);
           setIsUnlockModalOpen(false);
-          // If we have a file ready, trigger analysis
+          
           if (currentFile && metadata && currentFileHash) {
              const workflowStr = JSON.stringify(metadata.workflow || {});
              const promptStr = JSON.stringify(metadata.prompt || {});
-             performAiAnalysis(currentFile, workflowStr, promptStr, currentFileHash);
+             performAiAnalysis(currentFile, workflowStr, promptStr, currentFileHash, decrypted);
           }
           return true;
       }
       return false;
   };
 
-  const handleCancelUnlock = () => {
-      setIsUnlockModalOpen(false);
-      // App remains in offline mode
-  };
+  const handleCancelUnlock = () => setIsUnlockModalOpen(false);
 
   const handleSaveLocalKey = async (key: string, password?: string) => {
       if (key && password) {
-        // ENCRYPT and SAVE to LOCAL STORAGE
         const encrypted = encrypt(key, password);
         localStorage.setItem('gemini_api_key_encrypted', encrypted);
-        
-        // Also set active session
         sessionStorage.setItem('gemini_api_key_decrypted', key);
         setLocalApiKey(key);
         setHasEncryptedKey(true);
+        setIsSettingsOpen(false);
         
-        // Trigger AI if ready
         if (currentFile && metadata && currentFileHash) {
-            setTimeout(() => {
-                const workflowStr = JSON.stringify(metadata.workflow || {});
-                const promptStr = JSON.stringify(metadata.prompt || {});
-                performAiAnalysis(currentFile, workflowStr, promptStr, currentFileHash!);
-            }, 0);
+            const workflowStr = JSON.stringify(metadata.workflow || {});
+            const promptStr = JSON.stringify(metadata.prompt || {});
+            performAiAnalysis(currentFile, workflowStr, promptStr, currentFileHash, key);
         }
       } else {
         localStorage.removeItem('gemini_api_key_encrypted');
         sessionStorage.removeItem('gemini_api_key_decrypted');
         setLocalApiKey('');
         setHasEncryptedKey(false);
+        setIsSettingsOpen(false);
       }
   };
 
@@ -286,7 +266,7 @@ const App: React.FC = () => {
 
   const handleForceRerun = async () => {
       if (currentFile && metadata && analysisResult && currentFileHash) {
-          await performAiAnalysis(currentFile, analysisResult.workflowJson, analysisResult.promptJson, currentFileHash);
+          await performAiAnalysis(currentFile, analysisResult.workflowJson, analysisResult.promptJson, currentFileHash, localApiKey);
       }
   };
 
@@ -306,9 +286,7 @@ const App: React.FC = () => {
               });
           }
       } catch (e: any) {
-          if (e.message === 'API_KEY_NOT_FOUND') {
-             setIsUnlockModalOpen(true);
-          }
+          if (e.message === 'API_KEY_NOT_FOUND') setIsUnlockModalOpen(true);
       } finally {
           if (requestId === refineRequestRef.current) setIsRefiningPrompt(false);
       }
@@ -327,9 +305,7 @@ const App: React.FC = () => {
               return { ...prev, data: newData };
           });
       } catch (e: any) {
-          if (e.message === 'API_KEY_NOT_FOUND') {
-              setIsUnlockModalOpen(true);
-          }
+          if (e.message === 'API_KEY_NOT_FOUND') setIsUnlockModalOpen(true);
       }
   };
 
@@ -337,43 +313,32 @@ const App: React.FC = () => {
       if (!currentFile || !analysisResult || notes.length === 0) return;
       try {
         const base64 = await fileToBase64(currentFile);
-        
-        // Aggregate content
         const notesText = notes.map(n => `- ${n.text}`).join('\n');
         const referenceImages = notes.reduce<string[]>((acc, n) => {
             if (n.images) return [...acc, ...n.images];
             return acc;
         }, []);
-
         const newIssues = await generateIssuesFromNotes(base64, notesText, referenceImages);
-        
         setAnalysisResult(prev => {
            if (!prev || !prev.data.qualityAnalysis) return prev;
            const existingIssues = prev.data.qualityAnalysis.issues;
            const combinedIssues = [...existingIssues, ...newIssues];
-           
-           // Recalculate score
            const penalties = combinedIssues.reduce((acc, issue) => acc + issue.score, 0);
            const newScore = Math.max(0, Math.min(10, Math.round((10 - penalties) * 10) / 10));
-
            const newData = {
                ...prev.data,
-               userSceneNotes: notes, // Store the array structure
+               userSceneNotes: notes,
                qualityAnalysis: {
                    ...prev.data.qualityAnalysis,
                    issues: combinedIssues,
                    overallScore: newScore
                }
            };
-           
            if (currentFileHash) cacheAnalysis(currentFileHash, newData);
            return { ...prev, data: newData };
         });
-
       } catch (e: any) {
-          if (e.message === 'API_KEY_NOT_FOUND') {
-            setIsUnlockModalOpen(true);
-          }
+          if (e.message === 'API_KEY_NOT_FOUND') setIsUnlockModalOpen(true);
           throw e;
       }
   };
@@ -389,8 +354,6 @@ const App: React.FC = () => {
         const base64Data = await fileToBase64(currentFile);
         const result = await askQuestion(base64Data, analysisResult.data, question);
         const newData = { ...analysisResult.data };
-        
-        // Merge Annotations into QA item
         const newQA = { 
             id: Date.now().toString(), 
             question, 
@@ -398,7 +361,6 @@ const App: React.FC = () => {
             timestamp: Date.now(),
             annotations: result.annotations 
         };
-        
         newData.qa = [...(newData.qa || []), newQA];
         if (result.updates) {
              if (result.updates.critique && newData.promptAnalysis) newData.promptAnalysis.critique = result.updates.critique;
@@ -410,172 +372,134 @@ const App: React.FC = () => {
         }
         await handleUpdateData(newData);
     } catch (e: any) {
-        if (e.message === 'API_KEY_NOT_FOUND') {
-            setIsUnlockModalOpen(true);
-        }
+        if (e.message === 'API_KEY_NOT_FOUND') setIsUnlockModalOpen(true);
         throw e;
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col font-sans">
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={resetState}>
-            <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/20">
+    <div className="min-h-screen text-slate-200 flex flex-col font-sans selection:bg-indigo-500/30">
+      <header className="glass sticky top-0 z-50 border-b border-white/5">
+        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={resetState}>
+            <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-300">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">ComfyDocs</h1>
+            <h1 className="text-xl font-bold tracking-tight text-white">ComfyDocs</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
                <button 
                   onClick={hasEncryptedKey && !localApiKey ? () => setIsUnlockModalOpen(true) : handleOpenSettings}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${localApiKey ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-indigo-500/50 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20'}`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${localApiKey ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:border-white/20'}`}
                >
                   {localApiKey ? <Key size={12} className="text-emerald-400" /> : <Settings size={12} />}
-                  {localApiKey ? 'API Ready' : (hasEncryptedKey ? 'Unlock Key' : 'Setup API Key')}
+                  {localApiKey ? 'API ACTIVE' : (hasEncryptedKey ? 'UNLOCK KEY' : 'SETUP API')}
                </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-8">
         {!previewUrl && (showLanding ? <Landing onGetStarted={() => setShowLanding(false)} /> : (
-            <div className="flex flex-col items-center max-w-2xl mx-auto relative animate-in fade-in zoom-in-95 duration-500">
-                <button onClick={() => setShowLanding(true)} className="self-start mb-4 text-slate-500 hover:text-slate-300 text-sm flex items-center gap-1 transition-colors">
-                    <ChevronLeft size={16} /> Back to Home
+            <div className="flex flex-col items-center max-w-2xl mx-auto pt-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <button onClick={() => setShowLanding(true)} className="self-start mb-6 text-slate-500 hover:text-slate-300 text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ChevronLeft size={16} /> Back to Dashboard
                 </button>
-                <div className="w-full border-2 border-dashed border-slate-700 rounded-2xl p-12 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-slate-900/50 transition-all cursor-pointer group" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
+                <div className="w-full glass-card rounded-3xl p-16 flex flex-col items-center justify-center text-center hover:border-indigo-500/50 cursor-pointer group" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/png" onChange={handleFileChange} />
-                    <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <div className="w-24 h-24 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ring-1 ring-white/10">
                         <Upload className="w-10 h-10 text-indigo-400" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Upload ComfyUI Image</h2>
-                    <p className="text-slate-400 max-w-md">Drag and drop your .png generation here for automated decoding and AI analysis.</p>
+                    <h2 className="text-3xl font-extrabold text-white mb-4 tracking-tight">Drop your generation</h2>
+                    <p className="text-slate-400 max-w-sm text-lg font-light leading-relaxed">Recover your ComfyUI workflow and start a forensic audit.</p>
                 </div>
                 {processingState.status === 'error' && (
-                  <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 w-full animate-in slide-in-from-top-2">
+                  <div className="mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 w-full animate-in slide-in-from-top-2">
                     <AlertCircle className="shrink-0" size={20} />
-                    <p className="text-sm">{processingState.message}</p>
+                    <p className="text-sm font-medium">{processingState.message}</p>
                   </div>
                 )}
             </div>
         ))}
 
         {previewUrl && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
             <div className="lg:col-span-3 flex flex-col gap-6 lg:sticky lg:top-24">
-              <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 shadow-xl">
-                <div className="aspect-square relative rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center group/preview">
+              <div className="glass-card rounded-2xl p-4">
+                <div className="aspect-square relative rounded-xl overflow-hidden bg-slate-950/50 flex items-center justify-center group/preview ring-1 ring-white/5">
                   <img src={previewUrl} alt="ComfyUI Generation" className="max-w-full max-h-full object-contain" />
-                  
-                  {/* View Full Image Button */}
-                  <div className="absolute top-2 right-2 opacity-0 group-hover/preview:opacity-100 transition-opacity z-10">
-                      <button onClick={() => handleOpenImagePreview()} className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm" title="Zoom & Inspect">
-                          <ZoomIn size={16} />
+                  <div className="absolute top-3 right-3 opacity-0 group-hover/preview:opacity-100 transition-opacity z-10">
+                      <button onClick={() => handleOpenImagePreview()} className="p-2.5 bg-black/70 hover:bg-black text-white rounded-xl backdrop-blur-md border border-white/10" title="Zoom & Inspect">
+                          <ZoomIn size={18} />
                       </button>
                   </div>
-
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                    <button onClick={() => fileInputRef.current?.click()} className="pointer-events-auto px-4 py-2 bg-white text-slate-900 rounded-full text-sm font-bold shadow-xl transform translate-y-2 group-hover/preview:translate-y-0 transition-transform">Change Image</button>
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    <button onClick={() => fileInputRef.current?.click()} className="pointer-events-auto px-5 py-2.5 bg-white text-slate-900 rounded-full text-xs font-bold shadow-2xl transform translate-y-2 group-hover/preview:translate-y-0 transition-transform">UPDATE IMAGE</button>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <button onClick={resetState} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"><ArrowLeft size={12} /> New Upload</button>
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/png" onChange={handleFileChange} />
+                <div className="mt-5 flex items-center justify-between px-1">
+                  <button onClick={resetState} className="text-xs font-bold text-slate-500 hover:text-slate-300 flex items-center gap-1.5 transition-colors tracking-wider"><ArrowLeft size={14} /> NEW ANALYSIS</button>
+                  <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Original PNG</div>
                 </div>
               </div>
 
               {!localApiKey && (
-                  <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-5 flex flex-col gap-4">
-                      <div className="flex items-start gap-3">
-                        <Key className="w-5 h-5 text-indigo-400 mt-1 shrink-0" />
+                  <div className="glass rounded-2xl p-6 border-indigo-500/20">
+                      <div className="flex items-start gap-4 mb-5">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg"><Lock className="w-5 h-5 text-indigo-400" /></div>
                         <div>
-                            <p className="text-sm font-bold text-white mb-1">AI Features Disabled</p>
-                            <p className="text-xs text-slate-400 leading-relaxed mb-3">
-                                {hasEncryptedKey 
-                                  ? "Unlock your saved API key to enable forensic analysis." 
-                                  : "Provide a Gemini API Key to enable forensic analysis, quality scoring, and automated scene documentation."}
+                            <p className="text-sm font-bold text-white mb-1">AI Locked</p>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                Forensic auditing and quality scoring require a Gemini API Key.
                             </p>
-                            {!hasEncryptedKey && (
-                                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 hover:underline">
-                                    <ExternalLink size={10} /> Get API Key
-                                </a>
-                            )}
                         </div>
                       </div>
-                      {hasEncryptedKey ? (
-                           <button 
-                             onClick={() => setIsUnlockModalOpen(true)}
-                             className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
-                           >
-                             <Lock size={14} /> Unlock API Key
-                           </button>
-                      ) : (
-                           <button 
-                             onClick={handleOpenSettings}
-                             className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-                           >
-                             Setup API Key
-                           </button>
-                      )}
+                      <button 
+                        onClick={hasEncryptedKey ? () => setIsUnlockModalOpen(true) : handleOpenSettings}
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-0.5"
+                      >
+                         {hasEncryptedKey ? 'UNLOCK KEY' : 'SETUP API'}
+                      </button>
                   </div>
-              )}
-
-              {processingState.status === 'reading' && (
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center text-center">
-                   <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
-                   <p className="text-sm text-slate-300">Extracting Metadata...</p>
-                </div>
               )}
 
               {aiStatus === 'loading' && (
-                  <div className="bg-indigo-900/20 border border-indigo-900/50 rounded-xl p-4 flex items-center gap-3 animate-pulse">
-                      <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+                  <div className="glass rounded-2xl p-5 flex items-center gap-4 animate-pulse border-indigo-500/20">
+                      <div className="p-2 bg-indigo-500/10 rounded-lg"><Loader2 className="w-5 h-5 text-indigo-400 animate-spin" /></div>
                       <div>
-                          <p className="text-sm font-medium text-indigo-200">Generating AI Insights</p>
-                          <p className="text-xs text-indigo-300/70">Analyzing scene and quality...</p>
+                          <p className="text-xs font-bold text-indigo-200 tracking-wider">FORENSIC AUDIT</p>
+                          <p className="text-[10px] text-indigo-300/60 uppercase font-black mt-0.5">Scanning pixels...</p>
                       </div>
                   </div>
               )}
 
-              {aiStatus === 'error' && (
-                <div className="bg-red-900/10 border border-red-900/30 rounded-xl p-4 flex flex-col gap-3">
-                  <div className="flex items-center gap-2 text-red-400">
-                    <AlertCircle size={16} />
-                    <span className="text-sm font-medium">AI Analysis Failed</span>
-                  </div>
-                  <p className="text-xs text-red-300/70">{errorMessage}</p>
-                  <button onClick={handleForceRerun} className="text-xs font-bold text-red-400 hover:text-red-300 flex items-center gap-1 uppercase tracking-wider"><RefreshCw size={12} /> Retry AI Task</button>
-                </div>
-              )}
-
               {isLoadedFromCache && aiStatus === 'complete' && (
-                  <div className="bg-emerald-900/10 border border-emerald-900/30 rounded-xl p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2"><Database size={14} className="text-emerald-400"/><span className="text-xs text-emerald-300 font-medium">Loaded from Cache</span></div>
-                      <button onClick={handleForceRerun} className="p-1.5 hover:bg-emerald-900/30 rounded text-emerald-300 transition-colors"><RefreshCw size={12} /></button>
+                  <div className="glass rounded-xl p-3 flex items-center justify-between border-emerald-500/20">
+                      <div className="flex items-center gap-2"><Database size={14} className="text-emerald-400"/><span className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">Cached Analysis</span></div>
+                      <button onClick={handleForceRerun} className="p-1.5 hover:bg-emerald-500/20 rounded-lg text-emerald-400 transition-colors" title="Rerun Analysis"><RefreshCw size={12} /></button>
                   </div>
               )}
             </div>
 
             <div className="lg:col-span-9 flex flex-col">
               {processingState.status === 'error' ? (
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
-                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
-                        <AlertCircle className="w-8 h-8 text-red-400" />
+                <div className="glass rounded-3xl p-20 text-center flex flex-col items-center justify-center min-h-[500px] border-red-500/10">
+                    <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-8">
+                        <AlertCircle className="w-10 h-10 text-red-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">Analysis Failed</h3>
-                    <p className="text-slate-400 max-w-md mb-8">{processingState.message}</p>
-                    <button onClick={resetState} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all">Try Another Image</button>
+                    <h3 className="text-2xl font-bold text-white mb-3">Analysis Failed</h3>
+                    <p className="text-slate-400 max-w-md mb-10 text-lg leading-relaxed">{processingState.message}</p>
+                    <button onClick={resetState} className="px-8 py-3 bg-white text-slate-900 rounded-full font-bold transition-all hover:scale-105">Try Another Image</button>
                 </div>
               ) : processingState.status === 'complete' && analysisResult && metadata ? (
                 <>
-                  <div className="flex gap-2 mb-4 overflow-x-auto pb-2 shrink-0">
-                    <button onClick={() => setActiveTab('docs')} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'docs' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><FileText size={16} />Analysis</button>
-                    <button onClick={() => setActiveTab('workflow')} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'workflow' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><FileJson size={16} />Workflow Graph</button>
-                    <button onClick={() => setActiveTab('metadata')} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'metadata' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}><ImageIcon size={16} />Raw JSON</button>
-                  </div>
-                  <div className="w-full">
+                  <nav className="flex gap-1 mb-8 bg-white/5 p-1 rounded-2xl w-fit shrink-0 backdrop-blur-sm ring-1 ring-white/10">
+                    <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText size={16}/>} label="Overview" />
+                    <TabButton active={activeTab === 'workflow'} onClick={() => setActiveTab('workflow')} icon={<FileJson size={16}/>} label="Workflow" />
+                    <TabButton active={activeTab === 'metadata'} onClick={() => setActiveTab('metadata')} icon={<ImageIcon size={16}/>} label="Raw Data" />
+                  </nav>
+                  
+                  <div className="w-full animate-in fade-in slide-in-from-top-4 duration-700">
                     {activeTab === 'docs' && (
                         <DocumentationViewer 
                             data={analysisResult.data} 
@@ -591,16 +515,17 @@ const App: React.FC = () => {
                             onFocusRegion={handleOpenImagePreview}
                         />
                     )}
-                    {activeTab === 'workflow' && <div className="space-y-4">
-                        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-400">This graph is reconstructed from the embedded JSON workflow data.</div>
-                        <JsonViewer data={metadata.workflow} filename="workflow.json" label="Workflow JSON" />
+                    {activeTab === 'workflow' && <div className="space-y-6">
+                        <div className="glass p-4 rounded-xl text-xs text-slate-400 flex items-center gap-3 border-indigo-500/10"><Info size={14} className="text-indigo-400"/> Reconstructed from embedded metadata.</div>
+                        <JsonViewer data={metadata.workflow} filename="workflow.json" label="Workflow Schema" />
                       </div>}
-                    {activeTab === 'metadata' && <JsonViewer data={metadata.prompt} filename="api_metadata.json" label="API Prompt Data" />}
+                    {activeTab === 'metadata' && <JsonViewer data={metadata.prompt} filename="api_metadata.json" label="ComfyUI API Format" />}
                   </div>
                 </>
               ) : (
-                <div className="bg-slate-900/30 border border-slate-800 rounded-xl h-[500px] flex items-center justify-center text-slate-500 italic">
-                  Waiting for processing to finish...
+                <div className="glass rounded-3xl h-[600px] flex flex-col items-center justify-center text-slate-500 gap-4">
+                  <Loader2 size={32} className="animate-spin text-indigo-500/50" />
+                  <p className="font-medium tracking-wide">PROCESSING ANALYTICS</p>
                 </div>
               )}
             </div>
@@ -608,28 +533,21 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        onSave={handleSaveLocalKey} 
-        currentKey={localApiKey} 
-      />
-
-      <UnlockModal 
-        isOpen={isUnlockModalOpen}
-        onUnlock={handleUnlock}
-        onCancel={handleCancelUnlock}
-      />
-
-      <ImagePreviewModal 
-        isOpen={isImageModalOpen}
-        onClose={() => setIsImageModalOpen(false)}
-        imageSrc={previewUrl}
-        annotations={allAnnotations}
-        initialFocus={focusAnnotation}
-      />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSaveLocalKey} currentKey={localApiKey} />
+      <UnlockModal isOpen={isUnlockModalOpen} onUnlock={handleUnlock} onCancel={handleCancelUnlock} />
+      <ImagePreviewModal isOpen={isImageModalOpen} onClose={() => setIsImageModalOpen(false)} imageSrc={previewUrl} annotations={allAnnotations} initialFocus={focusAnnotation} />
     </div>
   );
 };
+
+const TabButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
+    <button 
+        onClick={onClick} 
+        className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+    >
+        {icon}
+        {label}
+    </button>
+);
 
 export default App;
