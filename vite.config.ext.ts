@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  base: '/comfydocs',
   plugins: [react()],
   build: {
     // Increase the chunk size warning limit to 1000 kB (1 MB) to suppress warnings for slightly larger chunks
