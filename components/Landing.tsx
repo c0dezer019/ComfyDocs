@@ -60,7 +60,7 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo }) => 
                   <div className="glass-card p-2 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative group bg-black/40">
                       <div className="aspect-[16/9] relative rounded-2xl overflow-hidden">
                         <img 
-                          src="https://images.unsplash.com/photo-1511735111819-9a3f7709049c?q=80&w=1200&auto=format&fit=crop" 
+                          src="assets/demo.png" 
                           alt="Forensic Demo" 
                           className="w-full h-full object-cover rounded-2xl opacity-90 group-hover:opacity-100 transition-opacity duration-700"
                         />

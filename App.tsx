@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, FileJson, FileText, Image as ImageIcon, Sparkles, Loader2, AlertCircle, ChevronLeft, RefreshCw, Database, ArrowLeft, Key, ExternalLink, Settings, ZoomIn, Lock, Info, ScrollText } from 'lucide-react';
 import { extractComfyMetadata } from './utils/pngParser';
@@ -15,14 +13,12 @@ import { Landing } from './components/Landing';
 import { SettingsModal } from './components/SettingsModal';
 import { UnlockModal } from './components/UnlockModal';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
-// FIX: Import QAItem to correctly type the demo data.
 import { ProcessingState, AnalysisResult, ComfyMetadata, SceneDocumentation, QualityIssue, SceneNote, Annotation, QAItem } from './types';
 
 const App: React.FC = () => {
   const [processingState, setProcessingState] = useState<ProcessingState>({ status: 'idle' });
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'complete' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isRefiningPrompt, setIsRefiningPrompt] = useState(false);
   
   const [localApiKey, setLocalApiKey] = useState<string>('');
   const [hasEncryptedKey, setHasEncryptedKey] = useState(false);
@@ -61,7 +57,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Collect all annotations from both Quality Issues and Q&A for the previewer
     let allAnns: Annotation[] = [];
     if (analysisResult?.data.qualityAnalysis?.issues) {
       const issueAnns = analysisResult.data.qualityAnalysis.issues
@@ -88,93 +83,22 @@ const App: React.FC = () => {
     setShowLanding(false);
   };
 
-  const startDemo = () => {
-    // 1. Define plausible "extracted" metadata from the demo PNG.
-    const demoMetadata: ComfyMetadata = {
-      workflow: {
-        "nodes": [
-          {"id": 4, "type": "CheckpointLoaderSimple", "pos": [40, 230], "widgets_values": ["realisticVision_v51.safetensors"]},
-          {"id": 5, "type": "VAELoader", "pos": [40, 480], "widgets_values": ["vae-ft-mse-840000-ema-pruned.safetensors"]},
-          {"id": 6, "type": "CLIPTextEncode", "pos": [430, 40], "title": "Positive Prompt", "widgets_values": ["A young red-headed woman sitting on a bed playing an acoustic guitar, wearing large headphones, realistic photography, soft cinematic lighting, detailed face, 8k, room clutter, bed sheets, window background, high resolution, raw photo."]},
-          {"id": 7, "type": "CLIPTextEncode", "pos": [430, 230], "title": "Negative Prompt", "widgets_values": ["deformed hands, fused fingers, low quality, bad anatomy, text, watermark, blurry faces, mutated limbs, extra digits"]},
-          {"id": 3, "type": "KSampler", "pos": [780, 230], "widgets_values": [880796292329044, "fixed", 25, 6.5, "dpmpp_2m", "karras", 1]},
-          {"id": 8, "type": "VAEDecode", "pos": [1150, 230]},
-          {"id": 9, "type": "SaveImage", "pos": [1400, 230]}
-        ],
-        "links": [
-          [1, 4, 0, 3, 0, "MODEL"],
-          [2, 4, 1, 6, 0, "CLIP"],
-          [3, 4, 1, 7, 0, "CLIP"],
-          [4, 6, 0, 3, 1, "CONDITIONING"],
-          [5, 7, 0, 3, 2, "CONDITIONING"],
-          [6, 5, 0, 8, 1, "VAE"],
-          [7, 3, 0, 8, 0, "LATENT"],
-          [8, 8, 0, 9, 0, "IMAGE"]
-        ]
-      },
-      prompt: { /* ComfyUI saves a simpler 'prompt' object too, we can omit for demo simplicity */ }
-    };
-    
-    // 2. Simulate local analysis on the "extracted" data, as the app would.
-    const localDoc = analyzeWorkflowLocally(demoMetadata.workflow);
+  const startDemo = async () => {
+    try {
+      localStorage.setItem('comfydocs_seen_landing', 'true');
+      setShowLanding(false);
+      setProcessingState({ status: 'reading', message: 'Loading interactive demo...' });
+      
+      const response = await fetch('assets/demo.png');
+      if (!response.ok) throw new Error(`Demo image not found (HTTP ${response.status})`);
+      
+      const blob = await response.blob();
+      const demoFile = new File([blob], 'demo.png', { type: 'image/png' });
 
-    // 3. Define the AI-generated enhancements that would come from an "online" analysis.
-    // FIX: Explicitly type demo data to prevent TypeScript from inferring string literals as `string`.
-    const demoIssues: QualityIssue[] = [
-      { id: 'demo-1', type: 'Anatomical Failure', description: 'The left hand positioned on the guitar neck is severely mutated. Fingers are fused, varying in thickness, and lack defined joint structures.', severity: 'Critical', score: 2.1, confidence: 98, suggestedFixes: ['Utilize a ControlNet Depth or Canny map to strictly enforce hand geometry during the generation pass.'], box_2d: [0.78, 0.45, 0.96, 0.68] },
-      { id: 'demo-2', type: 'Object Rendering Error', description: 'The guitar headstock (top right of instrument) is malformed. The tuning pegs appear as garbled dark artifacts that do not align with the strings.', severity: 'Major', score: 1.5, confidence: 94, suggestedFixes: ['Inpaint the headstock area with a higher denoising strength and a specific "guitar headstock" prompt.'], box_2d: [0.82, 0.72, 0.95, 0.82] },
-      { id: 'demo-3', type: 'Material Integration', description: 'The headphone earcup on the far side merges unnaturally with the subjects hair texture, lacking a distinct physical boundary.', severity: 'Major', score: 1.2, confidence: 88, suggestedFixes: ['Adjust the CFG scale or use a regional prompt mask to separate plastic/metal textures from hair.'], box_2d: [0.15, 0.44, 0.35, 0.52] }
-    ];
-
-    const demoQA: QAItem[] = [
-      { id: 'q1', question: 'Are there any issues with the facial features?', answer: 'The facial structure is generally sound, though the singing mouth lacks sharp inner definition. There is slight blurring where the lips meet the facial plane.', timestamp: Date.now(), annotations: [{ label: 'Visual Blur', style: 'box', box_2d: [0.25, 0.48, 0.38, 0.58] }] },
-      { id: 'q2', question: 'What is wrong with the guitar neck?', answer: 'Aside from the mutated hand, the guitar neck displays irregular fret spacing and the strings are not perfectly parallel as they approach the nut.', timestamp: Date.now() + 1000, annotations: [{ label: 'Geometry Error', style: 'paint', box_2d: [0.85, 0.48, 0.94, 0.65] }] }
-    ];
-
-    const aiEnhancements = {
-      sceneOverview: [
-        { category: 'SUBJECT', details: 'A young red-headed woman sitting on a bed playing a dark acoustic guitar.' },
-        { category: 'ACTION', details: 'Strumming chords while wearing large headphones, appearing focused and immersed in music.' },
-        { category: 'LIGHTING', details: 'Diffused natural light from a window on the right, creating soft highlights on the face and guitar body.' },
-        { category: 'COMPOSITION', details: 'Candid medium shot with a shallow depth of field; background elements are softly blurred.' },
-        { category: 'ENVIRONMENT', details: 'A domestic bedroom setting with white linens, a simple black headboard, and plants on a window sill.' }
-      ],
-      sceneBackstory: "This session was intended to replicate the vibe of an 'Unplugged' bedroom recording. The prompt aimed for high-fidelity skin textures and the specific matte finish of a mahogany guitar, utilizing a realistic checkpoint with LoRAs for 'Indie Photography' aesthetics.",
-      qualityAnalysis: {
-        overallScore: 0.8,
-        issues: demoIssues
-      },
-      promptAnalysis: {
-        adherenceScore: 8.2,
-        critique: "Excellent adherence to mood, lighting, and subject matter. The model successfully interpreted 'cinematic lighting' as soft window light. However, specific anatomical negatives failed to be suppressed by the sampler.",
-        improvements: [
-          "Increase weight of negative prompts for 'fused fingers'.",
-          "Try a slightly lower CFG (5.5) to reduce artifacting in complex areas like guitar strings.",
-          "Use Hi-Res Fix to resolve finger details at a higher starting resolution."
-        ]
-      },
-      qa: demoQA
-    };
-
-    // 4. Merge local analysis with AI enhancements for the final demo state.
-    const finalDemoData: SceneDocumentation = {
-      ...localDoc,
-      ...aiEnhancements,
-      isOffline: true, // Mark as a demo/offline analysis
-    };
-
-    // 5. Set all relevant states to display the full demo.
-    setMetadata(demoMetadata);
-    setAnalysisResult({
-      data: finalDemoData,
-      workflowJson: JSON.stringify(demoMetadata.workflow),
-      promptJson: "{}", // Can be empty as workflow is primary
-      rawWorkflow: demoMetadata.workflow,
-    });
-    setPreviewUrl('https://images.unsplash.com/photo-1511735111819-9a3f7709049c?q=80&w=1600&auto=format&fit=crop');
-    setAiStatus('complete');
-    setProcessingState({ status: 'complete' });
-    setShowLanding(false);
+      await handleNewFile(demoFile, true);
+    } catch (error: any) {
+      setProcessingState({ status: 'error', message: error.message || 'Could not load demo.' });
+    }
   };
 
   const resetState = () => {
@@ -201,7 +125,7 @@ const App: React.FC = () => {
     if (file) await handleNewFile(file);
   }, []); 
 
-  const handleNewFile = async (file: File) => {
+  const handleNewFile = async (file: File, isDemo: boolean = false) => {
     if (!file.type.startsWith('image/png')) {
         setProcessingState({ status: 'error', message: 'Please upload a PNG file from ComfyUI.' });
         return;
@@ -214,7 +138,6 @@ const App: React.FC = () => {
     setAnalysisResult(null);
     setMetadata(null);
     setIsLoadedFromCache(false);
-    setIsRefiningPrompt(false);
     setAllAnnotations([]);
     
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -244,17 +167,51 @@ const App: React.FC = () => {
             return;
         }
 
-        const cachedData = await getCachedAnalysis(hash);
-        if (cachedData) {
-            setAnalysisResult({ data: cachedData, workflowJson: workflowStr, promptJson: promptStr, rawWorkflow: extracted.workflow });
+        const localDoc = analyzeWorkflowLocally(extracted.workflow || { nodes: [], links: [] });
+        let currentAnalysis: AnalysisResult = { data: localDoc, workflowJson: workflowStr, promptJson: promptStr, rawWorkflow: extracted.workflow };
+        setAnalysisResult(currentAnalysis);
+        setProcessingState({ status: 'complete' });
+        
+        if (isDemo) {
+            const demoIssues: QualityIssue[] = [
+              { id: 'demo-1', type: 'Anatomical Failure', description: 'The left hand positioned on the guitar neck is severely mutated. Fingers are fused, varying in thickness, and lack defined joint structures.', severity: 'Critical', score: 2.1, confidence: 98, suggestedFixes: ['Utilize a ControlNet Depth or Canny map to strictly enforce hand geometry during the generation pass.'], box_2d: [0.78, 0.45, 0.96, 0.68] },
+              { id: 'demo-2', type: 'Object Rendering Error', description: 'The guitar headstock (top right of instrument) is malformed. The tuning pegs appear as garbled dark artifacts that do not align with the strings.', severity: 'Major', score: 1.5, confidence: 94, suggestedFixes: ['Inpaint the headstock area with a higher denoising strength and a specific "guitar headstock" prompt.'], box_2d: [0.82, 0.72, 0.95, 0.82] },
+              { id: 'demo-3', type: 'Material Integration', description: 'The headphone earcup on the far side merges unnaturally with the subjects hair texture, lacking a distinct physical boundary.', severity: 'Major', score: 1.2, confidence: 88, suggestedFixes: ['Adjust the CFG scale or use a regional prompt mask to separate plastic/metal textures from hair.'], box_2d: [0.15, 0.44, 0.35, 0.52] }
+            ];
+            const demoQA: QAItem[] = [
+              { id: 'q1', question: 'Are there any issues with the facial features?', answer: 'The facial structure is generally sound, though the singing mouth lacks sharp inner definition. There is slight blurring where the lips meet the facial plane.', timestamp: Date.now(), annotations: [{ label: 'Visual Blur', style: 'box', box_2d: [0.25, 0.48, 0.38, 0.58] }] },
+              { id: 'q2', question: 'What is wrong with the guitar neck?', answer: 'Aside from the mutated hand, the guitar neck displays irregular fret spacing and the strings are not perfectly parallel as they approach the nut.', timestamp: Date.now() + 1000, annotations: [{ label: 'Geometry Error', style: 'paint', box_2d: [0.85, 0.48, 0.94, 0.65] }] }
+            ];
+            const aiEnhancements = {
+              sceneOverview: [
+                { category: 'SUBJECT', details: 'A young red-headed woman sitting on a bed playing a dark acoustic guitar.' },
+                { category: 'ACTION', details: 'Strumming chords while wearing large headphones, appearing focused and immersed in music.' },
+                { category: 'LIGHTING', details: 'Diffused natural light from a window on the right, creating soft highlights on the face and guitar body.' },
+                { category: 'COMPOSITION', details: 'Candid medium shot with a shallow depth of field; background elements are softly blurred.' },
+                { category: 'ENVIRONMENT', details: 'A domestic bedroom setting with white linens, a simple black headboard, and plants on a window sill.' }
+              ],
+              sceneBackstory: "This session was intended to replicate the vibe of an 'Unplugged' bedroom recording. The prompt aimed for high-fidelity skin textures and the specific matte finish of a mahogany guitar, utilizing a realistic checkpoint with LoRAs for 'Indie Photography' aesthetics.",
+              qualityAnalysis: { overallScore: 0.8, issues: demoIssues },
+              promptAnalysis: {
+                adherenceScore: 8.2,
+                critique: "Excellent adherence to mood, lighting, and subject matter. The model successfully interpreted 'cinematic lighting' as soft window light. However, specific anatomical negatives failed to be suppressed by the sampler.",
+                improvements: ["Increase weight of negative prompts for 'fused fingers'.", "Try a slightly lower CFG (5.5) to reduce artifacting in complex areas like guitar strings.", "Use Hi-Res Fix to resolve finger details at a higher starting resolution."]
+              },
+              qa: demoQA
+            };
+
+            const finalDemoData: SceneDocumentation = { ...localDoc, ...aiEnhancements, isOffline: true };
+            setAnalysisResult({ ...currentAnalysis, data: finalDemoData });
             setAiStatus('complete');
-            setIsLoadedFromCache(true);
-            setProcessingState({ status: 'complete' });
         } else {
-            const localDoc = analyzeWorkflowLocally(extracted.workflow || { nodes: [], links: [] });
-            setAnalysisResult({ data: localDoc, workflowJson: workflowStr, promptJson: promptStr, rawWorkflow: extracted.workflow });
-            setProcessingState({ status: 'complete' });
-            if (localApiKey) await performAiAnalysis(file, workflowStr, promptStr, hash, localApiKey);
+            const cachedData = await getCachedAnalysis(hash);
+            if (cachedData) {
+                setAnalysisResult({ data: cachedData, workflowJson: workflowStr, promptJson: promptStr, rawWorkflow: extracted.workflow });
+                setAiStatus('complete');
+                setIsLoadedFromCache(true);
+            } else if (localApiKey) {
+                await performAiAnalysis(file, workflowStr, promptStr, hash, localApiKey);
+            }
         }
     } catch (error: any) {
         setProcessingState({ status: 'error', message: error.message || 'Error processing file.' });
@@ -321,6 +278,7 @@ const App: React.FC = () => {
         }
       } else {
         localStorage.removeItem('gemini_api_key_encrypted');
+        sessionStorage.removeItem('gemini_api_key_decrypted');
         setLocalApiKey('');
         setHasEncryptedKey(false);
         setIsSettingsOpen(false);
@@ -385,7 +343,18 @@ const App: React.FC = () => {
             <Landing onGetStarted={handleGetStarted} onTryDemo={startDemo} />
         ) : !previewUrl ? (
             <div className="flex flex-col items-center max-w-2xl mx-auto pt-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="w-full glass-card rounded-3xl p-16 flex flex-col items-center justify-center text-center hover:border-indigo-500/50 cursor-pointer group" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
+                <div 
+                  className="w-full glass-card rounded-3xl p-12 flex flex-col items-center justify-center text-center hover:border-indigo-500/50 cursor-pointer group relative" 
+                  onDragOver={(e) => e.preventDefault()} 
+                  onDrop={handleDrop} 
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                    {processingState.status !== 'idle' && (
+                        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center gap-4 z-10">
+                            <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+                            <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-200">{processingState.message || 'Processing...'}</p>
+                        </div>
+                    )}
                     <div className="w-24 h-24 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ring-1 ring-white/10">
                         <Upload className="w-10 h-10 text-indigo-400" />
                     </div>
