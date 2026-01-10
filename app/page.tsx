@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Upload,
@@ -10,23 +12,23 @@ import {
   ZoomIn,
   ScrollText,
 } from 'lucide-react';
-import { extractComfyMetadata } from './utils/pngParser';
+import { extractComfyMetadata } from '@/utils/pngParser';
 import {
   generateSceneDocumentation,
   askQuestion,
   refreshPromptAnalysis,
   generateIssueFix,
   generateIssuesFromNotes,
-} from './services/geminiService';
-import { analyzeWorkflowLocally } from './utils/workflowAnalyzer';
-import { calculateFileHash, getCachedAnalysis, cacheAnalysis } from './utils/cacheService';
-import { encrypt, decrypt } from './utils/encryption';
-import { DocumentationViewer } from './components/DocumentationViewer';
-import { ReportViewer } from './components/ReportViewer';
-import { Landing } from './components/Landing';
-import { SettingsModal } from './components/SettingsModal';
-import { UnlockModal } from './components/UnlockModal';
-import { ImagePreviewModal } from './components/ImagePreviewModal';
+} from '@/services/geminiService';
+import { analyzeWorkflowLocally } from '@/utils/workflowAnalyzer';
+import { calculateFileHash, getCachedAnalysis, cacheAnalysis } from '@/utils/cacheService';
+import { encrypt, decrypt } from '@/utils/encryption';
+import { DocumentationViewer } from '@/components/DocumentationViewer';
+import { ReportViewer } from '@/components/ReportViewer';
+import { Landing } from '@/components/Landing';
+import { SettingsModal } from '@/components/SettingsModal';
+import { UnlockModal } from '@/components/UnlockModal';
+import { ImagePreviewModal } from '@/components/ImagePreviewModal';
 import {
   ProcessingState,
   AnalysisResult,
@@ -35,9 +37,9 @@ import {
   Annotation,
   QualityIssue,
   SceneNote,
-} from './types';
+} from '@/lib/types';
 
-const App: React.FC = () => {
+export default function HomePage() {
   const [processingState, setProcessingState] = useState<ProcessingState>({ status: 'idle' });
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'complete' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -60,16 +62,20 @@ const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<'docs' | 'report'>('docs');
 
-  const [showLanding, setShowLanding] = useState<boolean>(() => {
-    return localStorage.getItem('comfydocs_seen_landing') !== 'true';
-  });
+  const [showLanding, setShowLanding] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to safely extract messages from unknown errors
   const getErrorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-  // Ensure demo asset respects Vite base URL (works in dev & deployed base)
-  const demoUrl = `${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}demo.png`;
+  // Demo URL for Next.js public folder
+  const demoUrl = '/demo.png';
+
+  // Check for landing page state on mount (client-side only)
+  useEffect(() => {
+    const seenLanding = localStorage.getItem('comfydocs_seen_landing') === 'true';
+    setShowLanding(!seenLanding);
+  }, []);
 
   useEffect(() => {
     const encrypted = localStorage.getItem('gemini_api_key_encrypted');
@@ -88,8 +94,8 @@ const App: React.FC = () => {
     let allAnns: Annotation[] = [];
     if (analysisResult?.data.qualityAnalysis?.issues) {
       const issueAnns = analysisResult.data.qualityAnalysis.issues
-        .filter((q) => q.box_2d)
-        .map((q) => ({ label: q.type, style: q.style || 'box', box_2d: q.box_2d as number[] }));
+        .filter((q): q is typeof q & { box_2d: [number, number, number, number] } => !!q.box_2d)
+        .map((q) => ({ label: q.type, style: (q.style || 'box') as 'box' | 'paint', box_2d: q.box_2d }));
       allAnns = [...allAnns, ...issueAnns];
     }
     if (analysisResult?.data.qa) {
@@ -201,7 +207,7 @@ const App: React.FC = () => {
       }
 
       const localDoc = analyzeWorkflowLocally(extracted.workflow || { nodes: [], links: [] });
-      let currentAnalysis: AnalysisResult = {
+      const currentAnalysis: AnalysisResult = {
         data: localDoc,
         workflowJson: workflowStr,
         promptJson: promptStr,
@@ -234,7 +240,7 @@ const App: React.FC = () => {
     workflowStr: string,
     promptStr: string,
     hash: string,
-    apiKey?: string,
+    apiKey?: string
   ) => {
     const effectiveKey = apiKey || localApiKey;
     if (!effectiveKey || !effectiveKey.startsWith('AIza')) {
@@ -288,7 +294,7 @@ const App: React.FC = () => {
           JSON.stringify(metadata.workflow),
           JSON.stringify(metadata.prompt),
           currentFileHash,
-          decrypted,
+          decrypted
         );
       }
       return true;
@@ -310,7 +316,7 @@ const App: React.FC = () => {
           JSON.stringify(metadata.workflow),
           JSON.stringify(metadata.prompt),
           currentFileHash,
-          key,
+          key
         );
       }
     } else {
@@ -365,7 +371,10 @@ const App: React.FC = () => {
       });
       handleUpdateData({
         ...analysisResult.data,
-        qualityAnalysis: { ...analysisResult.data.qualityAnalysis, issues: newIssues },
+        qualityAnalysis: {
+          overallScore: analysisResult.data.qualityAnalysis?.overallScore ?? 0,
+          issues: newIssues
+        },
       });
     } catch (e: unknown) {
       const msg = getErrorMessage(e);
@@ -623,7 +632,7 @@ const App: React.FC = () => {
       />
     </div>
   );
-};
+}
 
 const TabButton = ({
   active,
@@ -644,5 +653,3 @@ const TabButton = ({
     {label}
   </button>
 );
-
-export default App;

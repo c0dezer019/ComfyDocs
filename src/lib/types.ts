@@ -1,4 +1,3 @@
-
 export interface ComfyMetadata {
   workflow: any | null;
   prompt: any | null;
@@ -21,7 +20,7 @@ export interface QualityIssue {
   suggestedFixes?: string[]; // Specific fixes linked to this issue
   suggestedFix?: string; // Legacy support
   userNotes?: string; // User-provided context that influences suggestions
-  
+
   // Spatial Data
   box_2d?: [number, number, number, number]; // [ymin, xmin, ymax, xmax]
   style?: 'box' | 'paint';
@@ -76,17 +75,17 @@ export interface SceneDocumentation {
     text: string;
   }[];
   negativePrompt: string;
-  
+
   // New Fields
   userSceneNotes?: SceneNote[]; // Changed from string to array of notes
   sceneBackstory?: string; // New field for inspiration/backstory
-  
+
   qualityAnalysis?: {
     overallScore: number; // 1-10
     issues: QualityIssue[];
   };
   promptAnalysis?: PromptAnalysis;
-  
+
   // Q&A History
   qa?: QAItem[];
 }

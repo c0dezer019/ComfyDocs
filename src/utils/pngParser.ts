@@ -1,4 +1,4 @@
-import { ComfyMetadata, SceneDocumentation } from '../types';
+import { ComfyMetadata, SceneDocumentation } from '@/lib/types';
 
 /**
  * Extracts text chunks specifically for ComfyUI metadata (workflow, prompt)

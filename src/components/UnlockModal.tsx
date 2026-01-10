@@ -1,3 +1,4 @@
+'use client';
 
 import React, { useState } from 'react';
 import { Lock, Unlock, X, AlertCircle } from 'lucide-react';
@@ -30,7 +31,7 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({ isOpen, onUnlock, onCa
       <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
         <div className="p-6">
           <div className="w-12 h-12 bg-indigo-500/10 rounded-full flex items-center justify-center mb-4 mx-auto">
-             <Lock className="text-indigo-400" size={24} />
+            <Lock className="text-indigo-400" size={24} />
           </div>
           <h2 className="text-xl font-bold text-center text-white mb-2">Unlock API Key</h2>
           <p className="text-sm text-center text-slate-400 mb-6">
@@ -44,17 +45,17 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({ isOpen, onUnlock, onCa
                 autoFocus
                 value={password}
                 onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError(false);
+                  setPassword(e.target.value);
+                  setError(false);
                 }}
                 placeholder="Enter Password"
                 className={`w-full bg-slate-950 border ${error ? 'border-red-500' : 'border-slate-700'} rounded-lg py-3 px-4 text-center text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all`}
               />
               {error && (
-                  <div className="flex items-center justify-center gap-2 mt-2 text-red-400 text-xs">
-                      <AlertCircle size={12} />
-                      <span>Incorrect Password</span>
-                  </div>
+                <div className="flex items-center justify-center gap-2 mt-2 text-red-400 text-xs">
+                  <AlertCircle size={12} />
+                  <span>Incorrect Password</span>
+                </div>
               )}
             </div>
 
@@ -67,12 +68,12 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({ isOpen, onUnlock, onCa
               Unlock
             </button>
           </form>
-          
-          <button 
-             onClick={onCancel}
-             className="w-full mt-4 text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 transition-colors"
+
+          <button
+            onClick={onCancel}
+            className="w-full mt-4 text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 transition-colors"
           >
-             Cancel (Stay Offline)
+            Cancel (Stay Offline)
           </button>
         </div>
       </div>

@@ -1,4 +1,3 @@
-
 /**
  * PNG Chunk Writer Utility
  * Used to embed the analysis report back into the image as a standard PNG tEXt chunk.
@@ -40,7 +39,7 @@ const createChunk = (type: string, data: Uint8Array): Uint8Array => {
   const crcInput = new Uint8Array(typeArr.length + data.length);
   crcInput.set(typeArr, 0);
   crcInput.set(data, typeArr.length);
-  
+
   const crcVal = crc32(crcInput);
   const crcArr = new Uint8Array(4);
   const crcDv = new DataView(crcArr.buffer);
@@ -52,7 +51,7 @@ const createChunk = (type: string, data: Uint8Array): Uint8Array => {
   chunk.set(typeArr, 4);
   chunk.set(data, 8);
   chunk.set(crcArr, 8 + data.length);
-  
+
   return chunk;
 };
 
@@ -63,24 +62,24 @@ const createChunk = (type: string, data: Uint8Array): Uint8Array => {
 export const embedReportInPng = async (originalFile: File, reportJson: string): Promise<Blob> => {
   const buffer = await originalFile.arrayBuffer();
   const view = new DataView(buffer);
-  
+
   // Basic PNG Signature check
   if (view.getUint32(0) !== 0x89504e47) {
-    throw new Error("Not a valid PNG file");
+    throw new Error('Not a valid PNG file');
   }
 
   // Create the new chunk
   // tEXt format: keyword + null + text
-  const keyword = "ComfyDocs_Report";
+  const keyword = 'ComfyDocs_Report';
   const keywordBytes = stringToUint8(keyword);
   const textBytes = stringToUint8(reportJson);
-  
+
   const chunkData = new Uint8Array(keywordBytes.length + 1 + textBytes.length);
   chunkData.set(keywordBytes, 0);
   chunkData[keywordBytes.length] = 0; // Null separator
   chunkData.set(textBytes, keywordBytes.length + 1);
-  
-  const newChunk = createChunk("tEXt", chunkData);
+
+  const newChunk = createChunk('tEXt', chunkData);
 
   // Find insertion point (before IEND)
   let offset = 8;
