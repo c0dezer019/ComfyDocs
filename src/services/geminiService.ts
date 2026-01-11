@@ -205,7 +205,7 @@ export const generateSceneDocumentation = async (
     }
     throw new Error('Empty response from AI');
   } catch (error: any) {
-    handleApiError(error, 'Failed to generate documentation');
+    return handleApiError(error, 'Failed to generate documentation');
   }
 };
 
@@ -449,7 +449,7 @@ export const generateIssuesFromNotes = async (
     }
     throw new Error('Empty response');
   } catch (error: any) {
-    handleApiError(error, 'Failed to generate issues from notes');
+    return handleApiError(error, 'Failed to generate issues from notes');
   }
 };
 
@@ -485,7 +485,7 @@ export const refreshPromptAnalysis = async (
     if (response.text) return JSON.parse(response.text) as PromptAnalysis;
     throw new Error('Empty response');
   } catch (error: any) {
-    handleApiError(error, 'Failed to refresh analysis');
+    return handleApiError(error, 'Failed to refresh analysis');
   }
 };
 
@@ -562,6 +562,6 @@ export const askQuestion = async (
     if (response.text) return JSON.parse(response.text);
     throw new Error('Empty response');
   } catch (error: any) {
-    handleApiError(error, 'Failed to get answer');
+    return handleApiError(error, 'Failed to get answer');
   }
 };
