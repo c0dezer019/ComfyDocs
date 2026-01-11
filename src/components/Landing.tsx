@@ -74,47 +74,10 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
             <div className="glass-card p-2 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative group bg-black/40">
               <div className="aspect-[16/9] relative rounded-2xl overflow-hidden">
                 <img
-                  src={demoUrl || '/demo.png'}
+                  src={demoUrl || '/demo2.png'}
                   alt="Forensic Demo"
                   className="w-full h-full object-cover rounded-2xl opacity-90 group-hover:opacity-100 transition-opacity duration-700"
                 />
-
-                {/* Interactive Callouts */}
-                <div className="absolute top-[20%] left-[45%] group/callout cursor-pointer z-20">
-                  <div className="w-4 h-4 bg-rose-500 rounded-full animate-ping absolute opacity-75"></div>
-                  <div className="w-4 h-4 bg-rose-500 rounded-full relative border-2 border-white"></div>
-                  <div className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 backdrop-blur-md border border-rose-500/30 p-3 rounded-xl w-48 opacity-0 group-hover/callout:opacity-100 transition-opacity">
-                    <p className="text-[10px] font-black text-rose-400 uppercase mb-1">
-                      Critical Defect
-                    </p>
-                    <p className="text-[11px] text-white font-medium">
-                      Headphone integration failure. Geometry is merging with organic hair texture.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="absolute bottom-[15%] left-[45%] group/callout cursor-pointer z-20">
-                  <div className="w-4 h-4 bg-rose-600 rounded-full animate-ping absolute opacity-75"></div>
-                  <div className="w-4 h-4 bg-rose-600 rounded-full relative border-2 border-white"></div>
-                  <div className="absolute left-6 top-1/2 -translate-y-1/2 bg-black/80 backdrop-blur-md border border-rose-500/30 p-3 rounded-xl w-48 opacity-0 group-hover/callout:opacity-100 transition-opacity">
-                    <p className="text-[10px] font-black text-rose-400 uppercase mb-1">
-                      Anatomical Error
-                    </p>
-                    <p className="text-[11px] text-white font-medium">
-                      Finger fusion on guitar neck. Melting artifacts detected in left hand region.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="absolute top-[10%] right-[10%] p-4 bg-black/60 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl animate-pulse">
-                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    Forensic Confidence
-                  </div>
-                  <div className="text-2xl font-black text-emerald-400">98.4%</div>
-                </div>
-
-                {/* Scan Line Animation */}
-                <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/0 via-indigo-500/30 to-indigo-500/0 h-[2px] w-full animate-scan-line pointer-events-none"></div>
               </div>
             </div>
           </div>
@@ -220,17 +183,7 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
         </div>
       </div>
 
-      <style>{`
-          @keyframes scanLine {
-              0% { transform: translateY(0); opacity: 0; }
-              10% { opacity: 1; }
-              90% { opacity: 1; }
-              100% { transform: translateY(500px); opacity: 0; }
-          }
-          .animate-scan-line {
-              animation: scanLine 4s linear infinite;
-          }
-      `}</style>
+
     </div>
   );
 };

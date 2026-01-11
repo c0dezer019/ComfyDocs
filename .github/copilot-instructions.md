@@ -30,7 +30,7 @@ Short, actionable guidance to help AI code agents be productive in this reposito
 - `geminiService.ts` uses `gemini-3-pro-preview` and `gemini-3-flash-preview`; follow the existing response schemas (Type.*) when adding new model endpoints.
 - For quality issues: enforce severity rules used across the repo (e.g., if severity === 'Note', score must be 0).
 - Spatial annotations use normalized box coordinates `[ymin, xmin, ymax, xmax]` in 0-1 range; `style` is either `box` (outline) or `paint` (translucent fill).
-- Offline/demo modes: uploading `assets/demo.png` or a file named `demo.png` causes `extractComfyMetadata()` to return a demo workflow (handled in `pngParser.ts`).
+- Offline/demo modes: uploading `assets/demo2.png` or a file named `demo2.png` causes `extractComfyMetadata()` to return a demo workflow (handled in `pngParser.ts`).
 - No global state library—state is managed with React hooks in `App.tsx` and passed via props.
 - Styling is Tailwind via CDN from `index.html` (no local Tailwind build).
 

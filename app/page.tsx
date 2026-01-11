@@ -69,7 +69,7 @@ export default function HomePage() {
   const getErrorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
   // Demo URL for Next.js public folder
-  const demoUrl = '/demo.png';
+  const demoUrl = '/demo2.png';
 
   // Check for landing page state on mount (client-side only)
   useEffect(() => {
@@ -90,12 +90,24 @@ export default function HomePage() {
     }
   }, []);
 
+  // Extended annotation type that includes issue linkage
+  interface AnnotationWithMeta extends Annotation {
+    labelRotation?: number;
+    issueId?: string;
+  }
+
   useEffect(() => {
-    let allAnns: Annotation[] = [];
+    let allAnns: AnnotationWithMeta[] = [];
     if (analysisResult?.data.qualityAnalysis?.issues) {
       const issueAnns = analysisResult.data.qualityAnalysis.issues
         .filter((q): q is typeof q & { box_2d: [number, number, number, number] } => !!q.box_2d)
-        .map((q) => ({ label: q.type, style: (q.style || 'box') as 'box' | 'paint', box_2d: q.box_2d }));
+        .map((q) => ({
+          label: q.type,
+          style: (q.style || 'box') as 'box' | 'paint',
+          box_2d: q.box_2d,
+          issueId: q.id,
+          labelRotation: q.labelRotation || 0,
+        }));
       allAnns = [...allAnns, ...issueAnns];
     }
     if (analysisResult?.data.qa) {
@@ -109,6 +121,113 @@ export default function HomePage() {
   const handleOpenImagePreview = (annotation?: Annotation) => {
     setFocusAnnotation(annotation || null);
     setIsImageModalOpen(true);
+  };
+
+  // Annotation editing handlers
+  const handleAnnotationUpdate = (index: number, updatedAnnotation: AnnotationWithMeta) => {
+    if (!analysisResult?.data.qualityAnalysis) return;
+
+    const ann = allAnnotations[index] as AnnotationWithMeta;
+    if (!ann.issueId) return; // Can only update issue-linked annotations
+
+    // Find and update the corresponding issue
+    const issueIndex = analysisResult.data.qualityAnalysis.issues.findIndex(
+      (issue) => issue.id === ann.issueId
+    );
+
+    if (issueIndex !== -1) {
+      const updatedIssues = [...analysisResult.data.qualityAnalysis.issues];
+      updatedIssues[issueIndex] = {
+        ...updatedIssues[issueIndex],
+        type: updatedAnnotation.label,
+        box_2d: updatedAnnotation.box_2d,
+        labelRotation: updatedAnnotation.labelRotation,
+      };
+
+      setAnalysisResult({
+        ...analysisResult,
+        data: {
+          ...analysisResult.data,
+          qualityAnalysis: {
+            ...analysisResult.data.qualityAnalysis,
+            issues: updatedIssues,
+          },
+        },
+      });
+    }
+  };
+
+  const handleAnnotationDelete = (index: number) => {
+    if (!analysisResult?.data.qualityAnalysis) return;
+
+    const ann = allAnnotations[index] as AnnotationWithMeta;
+    if (!ann.issueId) return; // Can only delete issue-linked annotations
+
+    // Remove the corresponding issue
+    const updatedIssues = analysisResult.data.qualityAnalysis.issues.filter(
+      (issue) => issue.id !== ann.issueId
+    );
+
+    // Recalculate score
+    const calculateScore = (issues: QualityIssue[]) => {
+      if (issues.length === 0) return 10;
+      const severityWeights: Record<string, number> = { Critical: 3, Major: 2, Minor: 1, Note: 0.5 };
+      const totalWeight = issues.reduce((sum, i) => sum + (severityWeights[i.severity] || 1), 0);
+      return Math.max(1, Math.round(10 - totalWeight * 0.5));
+    };
+
+    setAnalysisResult({
+      ...analysisResult,
+      data: {
+        ...analysisResult.data,
+        qualityAnalysis: {
+          overallScore: calculateScore(updatedIssues),
+          issues: updatedIssues,
+        },
+      },
+    });
+  };
+
+  const handleAnnotationCreate = (newAnnotation: AnnotationWithMeta) => {
+    if (!analysisResult) return;
+
+    // Generate a unique ID for the new issue
+    const newIssueId = `issue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const newIssue: QualityIssue = {
+      id: newIssueId,
+      type: newAnnotation.label,
+      description: 'New issue created from annotation',
+      severity: 'Minor',
+      score: 5,
+      confidence: 100,
+      box_2d: newAnnotation.box_2d,
+      style: newAnnotation.style,
+      labelRotation: newAnnotation.labelRotation || 0,
+      suggestedFixes: [],
+    };
+
+    const currentIssues = analysisResult.data.qualityAnalysis?.issues || [];
+    const updatedIssues = [...currentIssues, newIssue];
+
+    // Recalculate score
+    const calculateScore = (issues: QualityIssue[]) => {
+      if (issues.length === 0) return 10;
+      const severityWeights: Record<string, number> = { Critical: 3, Major: 2, Minor: 1, Note: 0.5 };
+      const totalWeight = issues.reduce((sum, i) => sum + (severityWeights[i.severity] || 1), 0);
+      return Math.max(1, Math.round(10 - totalWeight * 0.5));
+    };
+
+    setAnalysisResult({
+      ...analysisResult,
+      data: {
+        ...analysisResult.data,
+        qualityAnalysis: {
+          overallScore: calculateScore(updatedIssues),
+          issues: updatedIssues,
+        },
+      },
+    });
   };
 
   const handleGetStarted = () => {
@@ -126,7 +245,7 @@ export default function HomePage() {
       if (!response.ok) throw new Error(`Demo image not found (HTTP ${response.status})`);
 
       const blob = await response.blob();
-      const demoFile = new File([blob], 'demo.png', { type: 'image/png' });
+      const demoFile = new File([blob], 'demo2.png', { type: 'image/png' });
 
       await handleNewFile(demoFile);
     } catch (error: unknown) {
@@ -629,6 +748,9 @@ export default function HomePage() {
         imageSrc={previewUrl}
         annotations={allAnnotations}
         initialFocus={focusAnnotation}
+        onAnnotationUpdate={handleAnnotationUpdate}
+        onAnnotationDelete={handleAnnotationDelete}
+        onAnnotationCreate={handleAnnotationCreate}
       />
     </div>
   );

@@ -24,6 +24,7 @@ export interface QualityIssue {
   // Spatial Data
   box_2d?: [number, number, number, number]; // [ymin, xmin, ymax, xmax]
   style?: 'box' | 'paint';
+  labelRotation?: number; // Degrees for label rotation in annotation view
 }
 
 export interface PromptAnalysis {

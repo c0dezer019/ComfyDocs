@@ -1019,13 +1019,13 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                     Technical Refinements
                   </h3>
                   <ul className="space-y-3">
-                    {filteredIssues.map((issue) => {
+                    {filteredIssues.map((issue, issueIdx) => {
                       const fixes =
                         issue.suggestedFixes || (issue.suggestedFix ? [issue.suggestedFix] : []);
                       if (fixes.length === 0) return null;
                       return (
                         <li
-                          key={issue.id}
+                          key={issue.id || `issue-${issueIdx}`}
                           className="p-5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl animate-in slide-in-from-right-4 duration-500"
                         >
                           <div className="flex items-center gap-3 mb-3">
@@ -1066,7 +1066,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
                       </li>
                     ))}
 
-                    <li className="flex items-center gap-3 pt-4">
+                    <li key="add-improvement" className="flex items-center gap-3 pt-4">
                       <input
                         type="text"
                         placeholder="Add observation..."
