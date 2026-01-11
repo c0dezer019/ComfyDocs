@@ -69,7 +69,7 @@ export default function HomePage() {
   const getErrorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
   // Demo URL for Next.js public folder
-  const demoUrl = '/demo2.png';
+  const demoUrl = '/demo.png';
 
   // Check for landing page state on mount (client-side only)
   useEffect(() => {
@@ -245,7 +245,7 @@ export default function HomePage() {
       if (!response.ok) throw new Error(`Demo image not found (HTTP ${response.status})`);
 
       const blob = await response.blob();
-      const demoFile = new File([blob], 'demo2.png', { type: 'image/png' });
+      const demoFile = new File([blob], 'demo.png', { type: 'image/png' });
 
       await handleNewFile(demoFile);
     } catch (error: unknown) {

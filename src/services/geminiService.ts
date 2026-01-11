@@ -10,6 +10,44 @@ const getApiKey = (): string => {
   return sessionStorage.getItem('gemini_api_key_decrypted') || '';
 };
 
+// Enhanced error handling helper for consistent CSP/CORS error reporting
+const handleApiError = (error: any, defaultMessage: string): never => {
+  if (
+    error.message?.includes('Requested entity was not found') ||
+    error.message?.includes('API_KEY_NOT_FOUND')
+  ) {
+    throw new Error('API_KEY_NOT_FOUND');
+  }
+  
+  // Enhanced error handling for CSP/CORS issues
+  if (error.name === 'TypeError' && error.message?.includes('Failed to fetch')) {
+    console.error('Network Error (possible CSP/CORS issue):', error);
+    
+    // Check if we're on mobile and provide specific guidance
+    const isMobile = typeof navigator !== 'undefined' && 
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      throw new Error('Mobile network restriction: Your device may be blocking AI service connections. Try using a different browser or network, or check your device\'s security settings.');
+    } else {
+      throw new Error('Network error: Unable to connect to AI service. This may be due to network restrictions or security policies.');
+    }
+  }
+  
+  if (error.message?.includes('Content Security Policy') || error.message?.includes('CSP')) {
+    console.error('CSP Error:', error);
+    throw new Error('Security policy error: Your browser is blocking the AI service connection. Please check your browser settings or contact support.');
+  }
+  
+  if (error.message?.includes('CORS') || error.message?.includes('cross-origin')) {
+    console.error('CORS Error:', error);
+    throw new Error('Cross-origin error: Unable to connect to AI service due to browser security restrictions.');
+  }
+  
+  console.error('Gemini API Error:', error);
+  throw new Error(`${defaultMessage}: ${error.message || 'Unknown error'}`);
+};
+
 export const generateSceneDocumentation = async (
   imageBase64: string,
   workflowJson: string,
@@ -167,14 +205,7 @@ export const generateSceneDocumentation = async (
     }
     throw new Error('Empty response from AI');
   } catch (error: any) {
-    if (
-      error.message?.includes('Requested entity was not found') ||
-      error.message?.includes('API_KEY_NOT_FOUND')
-    ) {
-      throw new Error('API_KEY_NOT_FOUND');
-    }
-    console.error('Gemini API Error:', error);
-    throw new Error('Failed to generate documentation.');
+    handleApiError(error, 'Failed to generate documentation');
   }
 };
 
@@ -418,10 +449,7 @@ export const generateIssuesFromNotes = async (
     }
     throw new Error('Empty response');
   } catch (error: any) {
-    if (error.message?.includes('Requested entity was not found')) {
-      throw new Error('API_KEY_NOT_FOUND');
-    }
-    throw new Error('Failed to generate issues from notes.');
+    handleApiError(error, 'Failed to generate issues from notes');
   }
 };
 
@@ -457,10 +485,7 @@ export const refreshPromptAnalysis = async (
     if (response.text) return JSON.parse(response.text) as PromptAnalysis;
     throw new Error('Empty response');
   } catch (error: any) {
-    if (error.message?.includes('Requested entity was not found')) {
-      throw new Error('API_KEY_NOT_FOUND');
-    }
-    throw new Error('Failed to refresh analysis.');
+    handleApiError(error, 'Failed to refresh analysis');
   }
 };
 
@@ -537,9 +562,6 @@ export const askQuestion = async (
     if (response.text) return JSON.parse(response.text);
     throw new Error('Empty response');
   } catch (error: any) {
-    if (error.message?.includes('Requested entity was not found')) {
-      throw new Error('API_KEY_NOT_FOUND');
-    }
-    throw new Error('Failed to get answer.');
+    handleApiError(error, 'Failed to get answer');
   }
 };
