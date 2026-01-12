@@ -159,7 +159,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           (ann) =>
             ann.box_2d &&
             initialFocus.box_2d &&
-            ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d![i]) < 0.001)
+            ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d![i]) < 0.001),
         );
         if (focusedIdx !== -1) {
           setVisibleAnnotations(new Set([focusedIdx]));
@@ -271,7 +271,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
       return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
     },
-    []
+    [],
   );
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -527,11 +527,15 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition-all backdrop-blur-md"
-                title={initialFocus ? 'Focused on single annotation' : 'Toggle annotation visibility'}
+                title={
+                  initialFocus ? 'Focused on single annotation' : 'Toggle annotation visibility'
+                }
               >
                 <Eye size={18} />
                 <span className="text-sm font-medium">
-                  {initialFocus ? 'Focused' : `Annotations (${visibleAnnotations.size}/${annotations.length})`}
+                  {initialFocus
+                    ? 'Focused'
+                    : `Annotations (${visibleAnnotations.size}/${annotations.length})`}
                 </span>
                 <ChevronDown
                   size={16}
@@ -582,7 +586,9 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                             >
                               {ann.label}
                             </span>
-                            <span className="text-[10px] text-slate-500 font-medium">#{idx + 1}</span>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              #{idx + 1}
+                            </span>
                           </button>
                           {canEdit && (
                             <button
@@ -648,6 +654,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       </div>
 
       {/* Image Container */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         ref={containerRef}
         className={`flex-1 w-full h-full overflow-hidden flex items-center justify-center select-none ${
@@ -668,7 +675,10 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
         <div
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transition: isDragging || isCreating || editMode === 'rotate' || editMode === 'move' ? 'none' : 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)',
+            transition:
+              isDragging || isCreating || editMode === 'rotate' || editMode === 'move'
+                ? 'none'
+                : 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)',
             transformOrigin: 'center center',
           }}
           className="relative flex items-center justify-center transition-transform"
@@ -709,7 +719,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
                 // Find the real index in the full annotations array
                 const realIdx = annotations.findIndex(
-                  (a) => a.box_2d && ann.box_2d && a.box_2d.every((v, i) => v === ann.box_2d[i])
+                  (a) => a.box_2d && ann.box_2d && a.box_2d.every((v, i) => v === ann.box_2d[i]),
                 );
 
                 const [ymin, xmin, ymax, xmax] = ann.box_2d;
@@ -727,7 +737,13 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                 const isHovered = hoveredAnnotationIdx === realIdx && !isSelected;
 
                 // Color priority: selected (green) > hovered (cyan) > focused (rose) > default (indigo)
-                const color = isSelected ? '#10b981' : isHovered ? '#22d3d8' : isFocused ? '#f43f5e' : '#6366f1';
+                const color = isSelected
+                  ? '#10b981'
+                  : isHovered
+                    ? '#22d3d8'
+                    : isFocused
+                      ? '#f43f5e'
+                      : '#6366f1';
 
                 // Label positioning with rotation - origin slides along box perimeter
                 const leaderLength = Math.max(imgDims.w, imgDims.h) * 0.05;
@@ -790,7 +806,13 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                       y={y}
                       width={width}
                       height={height}
-                      fill={isSelected ? 'rgba(16, 185, 129, 0.1)' : isHovered ? 'rgba(34, 211, 216, 0.08)' : 'none'}
+                      fill={
+                        isSelected
+                          ? 'rgba(16, 185, 129, 0.1)'
+                          : isHovered
+                            ? 'rgba(34, 211, 216, 0.08)'
+                            : 'none'
+                      }
                       stroke={color}
                       strokeWidth={isSelected ? '3' : isHovered ? '2.5' : '2'}
                       vectorEffect="non-scaling-stroke"

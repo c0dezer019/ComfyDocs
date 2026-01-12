@@ -71,10 +71,7 @@ export const SceneOverview: React.FC<SceneOverviewProps> = ({
         {isLoading ? (
           <LoadingAttributes />
         ) : (
-          <AttributeList 
-            items={sceneOverview} 
-            isOffline={isOffline} 
-          />
+          <AttributeList items={sceneOverview} isOffline={isOffline} />
         )}
 
         <NarrativeContext
@@ -169,7 +166,6 @@ const NarrativeContext: React.FC<NarrativeContextProps> = ({
           placeholder="Write the backstory or inspiration for this image..."
           value={tempBackstory}
           onChange={(e) => onTempChange(e.target.value)}
-          autoFocus
         />
         <div className="flex justify-end gap-3">
           <button
@@ -189,12 +185,13 @@ const NarrativeContext: React.FC<NarrativeContextProps> = ({
     ) : (
       <div
         onClick={onStartEdit}
+        onKeyDown={(e) => e.key === 'Enter' && onStartEdit()}
+        role="button"
+        tabIndex={0}
         className="group cursor-pointer rounded-2xl p-5 -mx-5 border border-transparent hover:bg-white/5 transition-all"
       >
         {backstory ? (
-          <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
-            {backstory}
-          </p>
+          <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{backstory}</p>
         ) : (
           <span className="text-slate-600 italic text-sm font-medium flex items-center gap-3">
             <Plus size={16} className="text-indigo-500/30" />

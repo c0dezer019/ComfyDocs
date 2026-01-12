@@ -182,8 +182,6 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
           </div>
         </div>
       </div>
-
-
     </div>
   );
 };

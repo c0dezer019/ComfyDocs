@@ -140,6 +140,7 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({ workflow }) => {
         </button>
       </div>
 
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         ref={containerRef}
         className="w-full h-full cursor-grab active:cursor-grabbing"
@@ -172,11 +173,7 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({ workflow }) => {
 
           {/* Nodes */}
           {nodes.map((node: any) => {
-            const w = node.size
-              ? Array.isArray(node.size)
-                ? node.size[0]
-                : node.size.width
-              : 210;
+            const w = node.size ? (Array.isArray(node.size) ? node.size[0] : node.size.width) : 210;
             const h = node.size
               ? Array.isArray(node.size)
                 ? node.size[1]

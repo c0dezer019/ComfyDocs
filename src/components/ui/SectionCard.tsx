@@ -40,26 +40,25 @@ export const SectionCard: React.FC<SectionCardProps> = ({
   children,
 }) => {
   // Parse color classes for ring
-  const ringClass = iconColorClass.includes('ring-') 
-    ? iconColorClass.split(' ').find(c => c.startsWith('ring-')) 
+  const ringClass = iconColorClass.includes('ring-')
+    ? iconColorClass.split(' ').find((c) => c.startsWith('ring-'))
     : '';
-  const bgTextClasses = iconColorClass.split(' ').filter(c => !c.startsWith('ring-')).join(' ');
+  const bgTextClasses = iconColorClass
+    .split(' ')
+    .filter((c) => !c.startsWith('ring-'))
+    .join(' ');
 
   return (
     <section className={`glass-card rounded-3xl p-8 relative group ${className}`}>
-      <div className={`flex items-center justify-between ${showHeaderBorder ? 'mb-10 pb-6 border-b border-white/5' : 'mb-8'}`}>
+      <div
+        className={`flex items-center justify-between ${showHeaderBorder ? 'mb-10 pb-6 border-b border-white/5' : 'mb-8'}`}
+      >
         <div className="flex items-center gap-4">
           <div className={`p-3 rounded-2xl ring-1 ${bgTextClasses} ${ringClass}`}>
-            {isLoading ? (
-              <Loader2 size={24} className="animate-spin" />
-            ) : (
-              <Icon size={24} />
-            )}
+            {isLoading ? <Loader2 size={24} className="animate-spin" /> : <Icon size={24} />}
           </div>
           <div>
-            <h2 className="text-2xl font-extrabold text-white tracking-tight">
-              {title}
-            </h2>
+            <h2 className="text-2xl font-extrabold text-white tracking-tight">{title}</h2>
             {subtitle && (
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">
                 {subtitle}
@@ -115,9 +114,7 @@ export const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   colorClass,
 }) => (
   <div className="bg-black/40 px-5 py-2.5 rounded-2xl border border-white/5 shadow-inner flex items-center gap-4">
-    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-      {label}
-    </span>
+    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
     <span className={`text-xl font-black ${colorClass}`}>
       {score}
       <span className="text-xs text-slate-600 ml-0.5">/{maxScore}</span>

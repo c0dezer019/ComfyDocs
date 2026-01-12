@@ -103,13 +103,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
+    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
       onClick={handleBackdropClick}
+      role="presentation"
     >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
         className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-900/50 shrink-0">
@@ -147,11 +152,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-4">
               {/* API Key Input */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="gemini-api-key"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Google Gemini API Key
                 </label>
                 <div className="relative">
                   <input
+                    id="gemini-api-key"
                     type={showKey ? 'text' : 'password'}
                     value={inputValue}
                     onChange={(e) => {
@@ -175,10 +184,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Password Input */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                  <label
+                    htmlFor="create-password"
+                    className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider"
+                  >
                     Create Password
                   </label>
                   <input
+                    id="create-password"
                     type="password"
                     value={password}
                     onChange={(e) => {
@@ -190,10 +203,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                  <label
+                    htmlFor="confirm-password"
+                    className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider"
+                  >
                     Confirm
                   </label>
                   <input
+                    id="confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => {

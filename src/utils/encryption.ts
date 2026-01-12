@@ -16,7 +16,7 @@ export const encrypt = (text: string, password: string): string => {
     let result = '';
     for (let i = 0; i < payload.length; i++) {
       result += String.fromCharCode(
-        payload.charCodeAt(i) ^ password.charCodeAt(i % password.length)
+        payload.charCodeAt(i) ^ password.charCodeAt(i % password.length),
       );
     }
     return btoa(result);

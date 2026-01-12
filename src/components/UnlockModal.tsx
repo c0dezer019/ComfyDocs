@@ -42,7 +42,6 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({ isOpen, onUnlock, onCa
             <div>
               <input
                 type="password"
-                autoFocus
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);

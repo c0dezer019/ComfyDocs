@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
-  // Handle CORS for mobile browsers - some mobile browsers are stricter  
+  // Handle CORS for mobile browsers - some mobile browsers are stricter
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
@@ -20,15 +20,15 @@ export function middleware(request: NextRequest) {
   // Mobile-specific CSP for Gemini API access without breaking app functionality
   const userAgent = request.headers.get('user-agent') || '';
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-  
+
   if (isMobile) {
     // Set a permissive CSP that allows Google API calls on mobile
     // Use Content-Security-Policy-Report-Only to avoid breaking the app
     response.headers.set(
       'Content-Security-Policy-Report-Only',
-      "connect-src 'self' https://generativelanguage.googleapis.com https://aiplatform.googleapis.com *"
+      "connect-src 'self' https://generativelanguage.googleapis.com https://aiplatform.googleapis.com *",
     );
-    
+
     // Additional mobile compatibility headers
     response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
     response.headers.set('Access-Control-Allow-Origin', '*');

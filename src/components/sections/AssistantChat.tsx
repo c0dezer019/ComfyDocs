@@ -63,16 +63,10 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           ref={qaContainerRef}
           className="space-y-6 max-h-[500px] overflow-y-auto custom-scrollbar px-2 py-4"
         >
-          {(!qa || qa.length === 0) && (
-            <EmptyState aiStatus={aiStatus} />
-          )}
+          {(!qa || qa.length === 0) && <EmptyState aiStatus={aiStatus} />}
 
           {qa?.map((item) => (
-            <ChatMessage
-              key={item.id}
-              item={item}
-              onFocusRegion={onFocusRegion}
-            />
+            <ChatMessage key={item.id} item={item} onFocusRegion={onFocusRegion} />
           ))}
 
           {isAsking && <SynthesizingIndicator />}
@@ -135,9 +129,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ item, onFocusRegion }) => (
               className="flex items-center gap-3 px-4 py-2.5 bg-slate-900/50 hover:bg-indigo-600 text-white border border-white/5 rounded-2xl transition-all shadow-lg group"
             >
               <ScanEye size={16} className="text-indigo-400 group-hover:text-white" />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                {ann.label}
-              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{ann.label}</span>
             </button>
           ))}
         </div>
@@ -180,9 +172,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
       }
       value={question}
       onChange={(e) => onChange(e.target.value)}
-      onKeyDown={(e) =>
-        e.key === 'Enter' && !isAsking && aiStatus === 'complete' && onSubmit()
-      }
+      onKeyDown={(e) => e.key === 'Enter' && !isAsking && aiStatus === 'complete' && onSubmit()}
       disabled={isAsking || aiStatus !== 'complete'}
     />
     <button

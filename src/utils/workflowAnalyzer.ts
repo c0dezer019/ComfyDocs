@@ -151,7 +151,8 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
 
     widgets.forEach((w: any) => {
       if (typeof w === 'number') {
-        if (w > 0 && w < 200 && w % 1 === 0 && !result.parameters.steps) result.parameters.steps = w;
+        if (w > 0 && w < 200 && w % 1 === 0 && !result.parameters.steps)
+          result.parameters.steps = w;
         else if (w > 0 && w <= 50 && !result.parameters.cfg) result.parameters.cfg = w;
         else if (w >= 0 && w <= 1.0 && !result.parameters.denoise) result.parameters.denoise = w;
       }
@@ -174,7 +175,7 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
         const t = (curr.type || '').toLowerCase();
         if (t.includes('checkpoint') || t.includes('loader')) {
           const modelName = curr.widgets_values?.find(
-            (v: any) => typeof v === 'string' && v.match(/\.(safetensors|ckpt|sft)$/i)
+            (v: any) => typeof v === 'string' && v.match(/\.(safetensors|ckpt|sft)$/i),
           );
           if (modelName) result.parameters.model = modelName;
           break;

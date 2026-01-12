@@ -18,32 +18,41 @@ const handleApiError = (error: any, defaultMessage: string): never => {
   ) {
     throw new Error('API_KEY_NOT_FOUND');
   }
-  
+
   // Enhanced error handling for CSP/CORS issues
   if (error.name === 'TypeError' && error.message?.includes('Failed to fetch')) {
     console.error('Network Error (possible CSP/CORS issue):', error);
-    
+
     // Check if we're on mobile and provide specific guidance
-    const isMobile = typeof navigator !== 'undefined' && 
+    const isMobile =
+      typeof navigator !== 'undefined' &&
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+
     if (isMobile) {
-      throw new Error('Mobile network restriction: Your device may be blocking AI service connections. Try using a different browser or network, or check your device\'s security settings.');
+      throw new Error(
+        "Mobile network restriction: Your device may be blocking AI service connections. Try using a different browser or network, or check your device's security settings.",
+      );
     } else {
-      throw new Error('Network error: Unable to connect to AI service. This may be due to network restrictions or security policies.');
+      throw new Error(
+        'Network error: Unable to connect to AI service. This may be due to network restrictions or security policies.',
+      );
     }
   }
-  
+
   if (error.message?.includes('Content Security Policy') || error.message?.includes('CSP')) {
     console.error('CSP Error:', error);
-    throw new Error('Security policy error: Your browser is blocking the AI service connection. Please check your browser settings or contact support.');
+    throw new Error(
+      'Security policy error: Your browser is blocking the AI service connection. Please check your browser settings or contact support.',
+    );
   }
-  
+
   if (error.message?.includes('CORS') || error.message?.includes('cross-origin')) {
     console.error('CORS Error:', error);
-    throw new Error('Cross-origin error: Unable to connect to AI service due to browser security restrictions.');
+    throw new Error(
+      'Cross-origin error: Unable to connect to AI service due to browser security restrictions.',
+    );
   }
-  
+
   console.error('Gemini API Error:', error);
   throw new Error(`${defaultMessage}: ${error.message || 'Unknown error'}`);
 };
@@ -51,7 +60,7 @@ const handleApiError = (error: any, defaultMessage: string): never => {
 export const generateSceneDocumentation = async (
   imageBase64: string,
   workflowJson: string,
-  promptJson: string
+  promptJson: string,
 ): Promise<SceneDocumentation> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('API_KEY_NOT_FOUND');
@@ -170,7 +179,13 @@ export const generateSceneDocumentation = async (
 
     Rules:
     - Identify specific quality issues (anatomy, texture, lighting).
-    - Provide unique 'suggestedFixes' for every quality issue.
+    - Provide unique 'suggestedFixes' for every quality issue. **PRIORITY FOR SUGGESTED FIXES**: always prefer in-house ComfyUI solutions and give actionable, implementable steps. Follow this order:
+      1) [prompt] Prompt edits or clarifications with concrete example text to add/remove (first choice).
+      2) [ksampler] Sampler/ksampler and parameter changes (sampler name, steps, cfg, denoise values).
+      3) [node] Workflow/node changes inside ComfyUI (node names and exact parameter edits).
+      4) [inpaint] In-painting using ComfyUI's inpainting node (only if prior options are insufficient).
+      5) [external] External software only when genuinely necessary—mark clearly as [external].
+      For each suggestedFix, include the bracketed tag ([prompt],[ksampler],[node],[inpaint],[external]) and concise step-by-step instructions that can be executed in ComfyUI.
     - Score adherence 1-10.
     - If an issue is localized to a specific area (like a hand, face, or artifact), provide the 2D bounding box (ymin, xmin, ymax, xmax).
     - **CRITICAL**: If severity is 'Note', the score penalty MUST be 0.
@@ -211,7 +226,7 @@ export const generateSceneDocumentation = async (
 
 export const runConsensusQualityAnalysis = async (
   imageBase64: string,
-  passCount: number
+  passCount: number,
 ): Promise<QualityIssue[]> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('API_KEY_NOT_FOUND');
@@ -246,7 +261,7 @@ export const runConsensusQualityAnalysis = async (
             },
           },
         },
-      })
+      }),
     );
 
   const results = await Promise.all(passPromises);
@@ -267,7 +282,7 @@ export const runConsensusQualityAnalysis = async (
     1. Group identical or semantically similar issues.
     2. Calculate 'confidence' (percentage 0-100) based on how many times the issue appeared across the ${passCount} passes. (e.g. if found in 2 of 3 passes, confidence is 66).
     3. Return a clean, consolidated list.
-    4. Provide specific technical 'suggestedFixes' for each issue.
+    4. Provide specific technical 'suggestedFixes' for each issue. **PRIORITIZE IN-HOUSE COMFYUI FIXES**: prefer prompt edits and sampler/ksampler parameter tweaks first, then ComfyUI node/workflow changes, then inpainting, and only recommend external software as a last resort. For each suggestedFix include a tag in square brackets from [prompt],[ksampler],[node],[inpaint],[external] and provide concise, actionable steps that can be done inside ComfyUI.
     5. Assign severity and a score penalty (0.1 - 2.0). **If severity is 'Note', score penalty MUST be 0.**
     6. **CRITICAL**: For each issue, identify its location in the image. Provide a 2D bounding box [ymin, xmin, ymax, xmax] (normalized 0-1). If the issue is global (e.g. "blurry"), leave box_2d empty.
     7. Select 'box' style for distinct objects, 'paint' for surface textures.
@@ -276,10 +291,7 @@ export const runConsensusQualityAnalysis = async (
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: {
-      parts: [
-        { inlineData: { mimeType: 'image/png', data: imageBase64 } },
-        { text: judgePrompt },
-      ],
+      parts: [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }, { text: judgePrompt }],
     },
     config: {
       responseMimeType: 'application/json',
@@ -329,7 +341,10 @@ export const runConsensusQualityAnalysis = async (
   }));
 };
 
-export const generateIssueFix = async (imageBase64: string, issue: QualityIssue): Promise<string> => {
+export const generateIssueFix = async (
+  imageBase64: string,
+  issue: QualityIssue,
+): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey) return 'API Key missing.';
 
@@ -346,10 +361,13 @@ export const generateIssueFix = async (imageBase64: string, issue: QualityIssue)
     Description: ${issue.description}
     User Context/Notes: ${issue.userNotes || 'None provided.'}
 
-    Task: Provide a single, concise technical fix or actionable suggestion for this issue.
-    CRITICAL: If the User Context/Notes explain that this element is intentional (e.g., "The character is an alien", "Stylized distortion"),
-    your fix should validate that intention or offer a way to refine it without "fixing" it as an error.
-    If the note clarifies it is NOT an issue, return "No fix needed (User Verified)".
+    Task: Provide a concise prioritized list (up to 3 items) of actionable fixes, ordered and focused on in-house ComfyUI solutions.
+    - Start with [prompt] suggestions: exact prompt text edits (show before/after) as the first option.
+    - Next try [ksampler] sampler and parameter tweaks (sampler name, steps, cfg, denoise values).
+    - Then [node] workflow changes inside ComfyUI (mention node names and exact parameter values).
+    - Use [inpaint] (ComfyUI inpainting node) only if necessary and describe mask guidance and steps.
+    - Only recommend external tools as [external] with clear justification.
+    For each fix, prefix with its tag in square brackets and provide concise, step-by-step actions the user can perform in ComfyUI. If the User Context/Notes explain that this element is intentional, return "No fix needed (User Verified)".
   `;
 
   try {
@@ -374,7 +392,7 @@ export const generateIssueFix = async (imageBase64: string, issue: QualityIssue)
 export const generateIssuesFromNotes = async (
   imageBase64: string,
   notes: string,
-  referenceImages: string[] = []
+  referenceImages: string[] = [],
 ): Promise<QualityIssue[]> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('API_KEY_NOT_FOUND');
@@ -455,7 +473,7 @@ export const generateIssuesFromNotes = async (
 
 export const refreshPromptAnalysis = async (
   imageBase64: string,
-  currentDoc: SceneDocumentation
+  currentDoc: SceneDocumentation,
 ): Promise<PromptAnalysis> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('API_KEY_NOT_FOUND');
@@ -471,7 +489,7 @@ export const refreshPromptAnalysis = async (
     required: ['adherenceScore', 'critique', 'improvements'],
   };
 
-  const prompt = `Update the Prompt Engineering analysis based on these issues: ${JSON.stringify(currentDoc.qualityAnalysis)}`;
+  const prompt = `Update the Prompt Engineering analysis based on these issues: ${JSON.stringify(currentDoc.qualityAnalysis)}. When suggesting 'improvements', first propose prompt-level edits (include exact example text) and sampler/ksampler parameter changes (explicit values). If necessary, propose workflow or inpainting steps inside ComfyUI. Tag each suggestion with [prompt], [ksampler], [node], or [inpaint] and include concise, implementable steps for ComfyUI.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -492,7 +510,7 @@ export const refreshPromptAnalysis = async (
 export const askQuestion = async (
   imageBase64: string,
   currentDoc: SceneDocumentation,
-  question: string
+  question: string,
 ): Promise<{
   answer: string;
   annotations?: Annotation[];

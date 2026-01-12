@@ -12,17 +12,23 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content }) => {
     <div className="prose prose-invert prose-slate max-w-none p-6 bg-slate-900/50 rounded-lg border border-slate-800 shadow-xl break-words">
       <ReactMarkdown
         components={{
-          h1: ({ node, ...props }) => (
+          h1: ({ node, children, ...props }) => (
             <h1
               className="text-2xl font-bold text-indigo-300 mb-4 pb-2 border-b border-slate-700"
               {...props}
-            />
+            >
+              {children}
+            </h1>
           ),
-          h2: ({ node, ...props }) => (
-            <h2 className="text-xl font-semibold text-slate-100 mt-6 mb-3" {...props} />
+          h2: ({ node, children, ...props }) => (
+            <h2 className="text-xl font-semibold text-slate-100 mt-6 mb-3" {...props}>
+              {children}
+            </h2>
           ),
-          h3: ({ node, ...props }) => (
-            <h3 className="text-lg font-medium text-slate-200 mt-4 mb-2" {...props} />
+          h3: ({ node, children, ...props }) => (
+            <h3 className="text-lg font-medium text-slate-200 mt-4 mb-2" {...props}>
+              {children}
+            </h3>
           ),
           p: ({ node, ...props }) => (
             <p className="text-slate-300 leading-relaxed mb-4" {...props} />
@@ -46,11 +52,13 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content }) => {
               {...props}
             />
           ),
-          a: ({ node, ...props }) => (
+          a: ({ node, children, ...props }) => (
             <a
               className="text-indigo-300 hover:text-indigo-200 underline decoration-indigo-300/30 underline-offset-2 transition-colors"
               {...props}
-            />
+            >
+              {children}
+            </a>
           ),
           blockquote: ({ node, ...props }) => (
             <blockquote
@@ -69,9 +77,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content }) => {
               {...props}
             />
           ),
-          td: ({ node, ...props }) => (
-            <td className="p-3 border-b border-slate-800" {...props} />
-          ),
+          td: ({ node, ...props }) => <td className="p-3 border-b border-slate-800" {...props} />,
         }}
       >
         {content}

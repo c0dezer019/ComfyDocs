@@ -25,9 +25,7 @@ export const ParametersGrid: React.FC<ParametersGridProps> = ({ parameters }) =>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {Object.entries(parameters).map(
           ([key, value]) =>
-            (value || value === 0) && (
-              <ParameterCard key={key} label={key} value={value} />
-            ),
+            (value || value === 0) && <ParameterCard key={key} label={key} value={value} />,
         )}
       </div>
     </SectionCard>

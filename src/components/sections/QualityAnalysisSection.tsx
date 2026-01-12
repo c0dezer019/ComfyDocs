@@ -16,7 +16,12 @@ import {
 } from 'lucide-react';
 import { QualityIssue, Annotation } from '@/lib/types';
 import { SectionCard, LoadingPlaceholder, ScoreDisplay } from '../ui/SectionCard';
-import { getSeverityColor, getConfidenceColor, getScoreColor, calculateScore } from '@/lib/styleUtils';
+import {
+  getSeverityColor,
+  getConfidenceColor,
+  getScoreColor,
+  calculateScore,
+} from '@/lib/styleUtils';
 import { runConsensusQualityAnalysis } from '@/services/geminiService';
 
 interface QualityAnalysisSectionProps {
@@ -249,7 +254,9 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
               />
             ) : (
               <button
-                onClick={() => setNewIssue({ severity: 'Minor', score: 0.5, type: '', userNotes: '' })}
+                onClick={() =>
+                  setNewIssue({ severity: 'Minor', score: 0.5, type: '', userNotes: '' })
+                }
                 className="w-full py-4 border-2 border-dashed border-white/5 rounded-2xl text-sm font-bold text-slate-500 hover:text-indigo-400 hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-3"
               >
                 <Plus size={20} /> MANUALLY TAG ARTIFACT
@@ -533,7 +540,6 @@ const NoteSection: React.FC<NoteSectionProps> = ({
           className="w-full bg-slate-900 border border-white/5 rounded-xl text-sm text-slate-200 p-4 min-h-[100px] outline-none"
           value={tempContent}
           onChange={(e) => onChange(e.target.value)}
-          autoFocus
         />
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} className="text-[10px] font-black text-slate-500 uppercase">
@@ -548,7 +554,9 @@ const NoteSection: React.FC<NoteSectionProps> = ({
         </div>
       </div>
     ) : (
-      <p className="italic text-slate-400 leading-relaxed">{userNotes || 'No context added yet.'}</p>
+      <p className="italic text-slate-400 leading-relaxed">
+        {userNotes || 'No context added yet.'}
+      </p>
     )}
   </div>
 );

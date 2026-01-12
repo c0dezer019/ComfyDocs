@@ -1,4 +1,4 @@
-/* eslint-disable global-require */
+ 
 
 const tseslint = require('@typescript-eslint/eslint-plugin');
 const tsparser = require('@typescript-eslint/parser');
@@ -6,6 +6,7 @@ const reactPlugin = require('eslint-plugin-react');
 const reactHooksPlugin = require('eslint-plugin-react-hooks');
 const jsxA11yPlugin = require('eslint-plugin-jsx-a11y');
 const prettierPlugin = require('eslint-plugin-prettier');
+const nextPlugin = require('@next/eslint-plugin-next');
 
 module.exports = [
   // Global ignores
@@ -21,6 +22,12 @@ module.exports = [
       '**/*.jpeg',
       '**/*.gif',
       '.husky/**',
+      '.next/**',
+      '.claude/**',
+      '.git/**',
+      '**/*.md',
+      '**/*.json',
+      '.*',
     ],
   },
 
@@ -49,11 +56,14 @@ module.exports = [
       'react-hooks': reactHooksPlugin,
       'jsx-a11y': jsxA11yPlugin,
       prettier: prettierPlugin,
+      '@next/next': nextPlugin,
     },
     rules: {
       ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       ...jsxA11yPlugin.configs.recommended.rules,
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
       'prettier/prettier': 'error',
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
@@ -69,7 +79,6 @@ module.exports = [
         ecmaVersion: 'latest',
         sourceType: 'module',
         ecmaFeatures: { jsx: true },
-        project: './tsconfig.json',
       },
       globals: {
         JSX: 'readonly',
@@ -89,12 +98,15 @@ module.exports = [
       'react-hooks': reactHooksPlugin,
       'jsx-a11y': jsxA11yPlugin,
       prettier: prettierPlugin,
+      '@next/next': nextPlugin,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
       ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       ...jsxA11yPlugin.configs.recommended.rules,
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
       'prettier/prettier': 'error',
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',

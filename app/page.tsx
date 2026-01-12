@@ -132,7 +132,7 @@ export default function HomePage() {
 
     // Find and update the corresponding issue
     const issueIndex = analysisResult.data.qualityAnalysis.issues.findIndex(
-      (issue) => issue.id === ann.issueId
+      (issue) => issue.id === ann.issueId,
     );
 
     if (issueIndex !== -1) {
@@ -165,13 +165,18 @@ export default function HomePage() {
 
     // Remove the corresponding issue
     const updatedIssues = analysisResult.data.qualityAnalysis.issues.filter(
-      (issue) => issue.id !== ann.issueId
+      (issue) => issue.id !== ann.issueId,
     );
 
     // Recalculate score
     const calculateScore = (issues: QualityIssue[]) => {
       if (issues.length === 0) return 10;
-      const severityWeights: Record<string, number> = { Critical: 3, Major: 2, Minor: 1, Note: 0.5 };
+      const severityWeights: Record<string, number> = {
+        Critical: 3,
+        Major: 2,
+        Minor: 1,
+        Note: 0.5,
+      };
       const totalWeight = issues.reduce((sum, i) => sum + (severityWeights[i.severity] || 1), 0);
       return Math.max(1, Math.round(10 - totalWeight * 0.5));
     };
@@ -213,7 +218,12 @@ export default function HomePage() {
     // Recalculate score
     const calculateScore = (issues: QualityIssue[]) => {
       if (issues.length === 0) return 10;
-      const severityWeights: Record<string, number> = { Critical: 3, Major: 2, Minor: 1, Note: 0.5 };
+      const severityWeights: Record<string, number> = {
+        Critical: 3,
+        Major: 2,
+        Minor: 1,
+        Note: 0.5,
+      };
       const totalWeight = issues.reduce((sum, i) => sum + (severityWeights[i.severity] || 1), 0);
       return Math.max(1, Math.round(10 - totalWeight * 0.5));
     };
@@ -359,7 +369,7 @@ export default function HomePage() {
     workflowStr: string,
     promptStr: string,
     hash: string,
-    apiKey?: string
+    apiKey?: string,
   ) => {
     const effectiveKey = apiKey || localApiKey;
     if (!effectiveKey || !effectiveKey.startsWith('AIza')) {
@@ -413,7 +423,7 @@ export default function HomePage() {
           JSON.stringify(metadata.workflow),
           JSON.stringify(metadata.prompt),
           currentFileHash,
-          decrypted
+          decrypted,
         );
       }
       return true;
@@ -435,7 +445,7 @@ export default function HomePage() {
           JSON.stringify(metadata.workflow),
           JSON.stringify(metadata.prompt),
           currentFileHash,
-          key
+          key,
         );
       }
     } else {
@@ -492,7 +502,7 @@ export default function HomePage() {
         ...analysisResult.data,
         qualityAnalysis: {
           overallScore: analysisResult.data.qualityAnalysis?.overallScore ?? 0,
-          issues: newIssues
+          issues: newIssues,
         },
       });
     } catch (e: unknown) {

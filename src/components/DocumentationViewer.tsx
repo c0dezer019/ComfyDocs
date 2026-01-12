@@ -29,7 +29,7 @@ interface DocumentationViewerProps {
 /**
  * Main documentation viewer component.
  * Orchestrates section components and handles data updates.
- * 
+ *
  * This component has been refactored from a monolithic 1200+ line file
  * into a composition of focused, reusable section components.
  */
@@ -56,7 +56,10 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
   };
 
   // Handler for updating quality analysis
-  const handleUpdateQualityAnalysis = (analysis: { overallScore: number; issues: QualityIssue[] }) => {
+  const handleUpdateQualityAnalysis = (analysis: {
+    overallScore: number;
+    issues: QualityIssue[];
+  }) => {
     onUpdateData({ ...data, qualityAnalysis: analysis });
   };
 
@@ -94,10 +97,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
       />
 
       {/* 3. Prompts */}
-      <PromptsSection
-        prompts={data.prompts}
-        negativePrompt={data.negativePrompt}
-      />
+      <PromptsSection prompts={data.prompts} negativePrompt={data.negativePrompt} />
 
       {/* 4. Parameters Grid */}
       <ParametersGrid parameters={data.parameters} />

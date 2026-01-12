@@ -20,10 +20,7 @@ interface PromptsSectionProps {
  * Prompts section component.
  * Displays extracted prompt metadata from the image.
  */
-export const PromptsSection: React.FC<PromptsSectionProps> = ({
-  prompts,
-  negativePrompt,
-}) => {
+export const PromptsSection: React.FC<PromptsSectionProps> = ({ prompts, negativePrompt }) => {
   return (
     <SectionCard
       icon={ScrollText}
@@ -34,16 +31,12 @@ export const PromptsSection: React.FC<PromptsSectionProps> = ({
     >
       <div className="grid gap-4">
         {prompts && prompts.length > 0 ? (
-          prompts.map((p, i) => (
-            <PromptCard key={i} label={p.label} text={p.text} />
-          ))
+          prompts.map((p, i) => <PromptCard key={i} label={p.label} text={p.text} />)
         ) : (
           <div className="text-slate-500 italic">No prompt metadata found in the image.</div>
         )}
 
-        {negativePrompt && (
-          <PromptCard label="Negative Prompt" text={negativePrompt} />
-        )}
+        {negativePrompt && <PromptCard label="Negative Prompt" text={negativePrompt} />}
       </div>
     </SectionCard>
   );

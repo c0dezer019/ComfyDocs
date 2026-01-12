@@ -47,7 +47,7 @@ ${
 * **Description:** ${i.description}
 * **Score Impact:** ${i.severity === 'Note' ? 'None' : '-' + i.score}
 * **Fix:** ${i.suggestedFixes?.join(', ')}
-`
+`,
     )
     .join('\n') || 'No issues detected.'
 }

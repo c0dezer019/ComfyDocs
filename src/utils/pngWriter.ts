@@ -93,7 +93,7 @@ export const embedReportInPng = async (originalFile: File, reportJson: string): 
       uint8Buffer[typeOffset],
       uint8Buffer[typeOffset + 1],
       uint8Buffer[typeOffset + 2],
-      uint8Buffer[typeOffset + 3]
+      uint8Buffer[typeOffset + 3],
     );
 
     if (type === 'IEND') {
