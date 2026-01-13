@@ -10,8 +10,25 @@ import { SceneDocumentation } from '@/lib/types';
  * 3. Recursively resolve text from those nodes (checking widgets and inputs).
  * 4. Fallback to a global scan for any nodes missed by the trace.
  */
-export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
-  const nodes = workflow.nodes || [];
+type WidgetValue = string | number | boolean | null | Record<string, unknown>;
+
+type NodeInput = { name: string; link?: number | null };
+
+type WorkflowNode = {
+  id: number;
+  type?: string;
+  title?: string;
+  inputs?: NodeInput[];
+  widgets_values?: WidgetValue[];
+};
+
+type Workflow = {
+  nodes?: WorkflowNode[];
+  links?: (number | string)[][];
+};
+
+export const analyzeWorkflowLocally = (workflow: Workflow): SceneDocumentation => {
+  const nodes: WorkflowNode[] = workflow.nodes || [];
   const links = workflow.links || [];
 
   const result: SceneDocumentation = {
@@ -36,23 +53,27 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
   };
 
   const processedNodeIds = new Set<number>();
-  const getNodeById = (id: number) => nodes.find((n: any) => n.id === id);
+  const getNodeById = (id: number) => nodes.find((n) => n.id === id);
 
   /**
    * Traces a connection backwards to find the functional source node.
    * Handles Reroutes transparently.
    */
-  const findUpstreamNode = (node: any, inputName: string, depth = 0): any | null => {
+  const findUpstreamNode = (
+    node: WorkflowNode | undefined,
+    inputName: string,
+    depth = 0,
+  ): WorkflowNode | null => {
     if (!node || !node.inputs || depth > 20) return null;
 
-    const input = node.inputs.find((i: any) => i.name === inputName);
-    if (!input || !input.link) return null;
+    const input = node.inputs.find((i) => i.name === inputName);
+    if (!input || input.link == null) return null;
 
-    const link = links.find((l: any) => l[0] === input.link);
+    const link = links.find((l) => Number(l[0]) === input.link || l[0] === input.link);
     if (!link) return null;
 
     // link: [id, origin_id, origin_slot, target_id, target_slot, type]
-    const sourceNode = getNodeById(link[1]);
+    const sourceNode = getNodeById(Number(link[1]));
     if (!sourceNode) return null;
 
     const type = (sourceNode.type || '').toLowerCase();
@@ -76,7 +97,10 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
    * Recursively extracts text from a node.
    * Checks widgets first, then input connections (e.g. Primitive -> CLIPTextEncode).
    */
-  const resolveTextFromNode = (node: any, visited = new Set<number>()): string | null => {
+  const resolveTextFromNode = (
+    node: WorkflowNode | undefined,
+    visited = new Set<number>(),
+  ): string | null => {
     if (!node || visited.has(node.id)) return null;
     visited.add(node.id);
 
@@ -136,20 +160,20 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
   // 1. Find Main KSampler
   // Sort by number of inputs descending to find the most "connected" sampler
   const samplers = nodes
-    .filter((n: any) => {
+    .filter((n) => {
       const t = (n.type || '').toLowerCase();
       return (t.includes('ksampler') || t.includes('sampler')) && !t.includes('box'); // exclude layout nodes if any
     })
-    .sort((a: any, b: any) => (b.inputs?.length || 0) - (a.inputs?.length || 0));
+    .sort((a, b) => (b.inputs?.length || 0) - (a.inputs?.length || 0));
 
   const kSampler = samplers[0];
 
   if (kSampler) {
     // Extract Parameters
-    const widgets = kSampler.widgets_values || [];
+    const widgets: WidgetValue[] = kSampler.widgets_values || [];
     if (widgets.length > 0) result.parameters.seed = String(widgets[0]);
 
-    widgets.forEach((w: any) => {
+    widgets.forEach((w) => {
       if (typeof w === 'number') {
         if (w > 0 && w < 200 && w % 1 === 0 && !result.parameters.steps)
           result.parameters.steps = w;
@@ -169,15 +193,15 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
     const modelNode = findUpstreamNode(kSampler, 'model');
     if (modelNode) {
       // It might be a Lora chain, traverse up
-      let curr = modelNode;
+      let curr: WorkflowNode | null = modelNode;
       let depth = 0;
       while (curr && depth < 10) {
         const t = (curr.type || '').toLowerCase();
         if (t.includes('checkpoint') || t.includes('loader')) {
           const modelName = curr.widgets_values?.find(
-            (v: any) => typeof v === 'string' && v.match(/\.(safetensors|ckpt|sft)$/i),
+            (v) => typeof v === 'string' && v.match(/\.(safetensors|ckpt|sft)$/i),
           );
-          if (modelName) result.parameters.model = modelName;
+          if (typeof modelName === 'string') result.parameters.model = modelName;
           break;
         }
         if (t.includes('lora')) {
@@ -215,8 +239,8 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
   // 3. Fallback: Scan remaining nodes for prompts
   // This catches prompts in workflows that don't follow standard KSampler connections
   // or if tracing failed.
-  nodes.forEach((n: any) => {
-    if (processedNodeIds.has(n.id)) return;
+  for (const n of nodes) {
+    if (processedNodeIds.has(n.id)) continue;
 
     const type = (n.type || '').toLowerCase();
     const title = (n.title || '').toLowerCase();
@@ -245,7 +269,7 @@ export const analyzeWorkflowLocally = (workflow: any): SceneDocumentation => {
         }
       }
     }
-  });
+  }
 
   return result;
 };

@@ -127,8 +127,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ item, onFocusRegion }) => (
               key={idx}
               onClick={() => onFocusRegion(ann)}
               className="flex items-center gap-3 px-4 py-2.5 bg-slate-900/50 hover:bg-indigo-600 text-white border border-white/5 rounded-2xl transition-all shadow-lg group"
+              aria-label={`Focus on ${ann.label} region in image`}
             >
-              <ScanEye size={16} className="text-indigo-400 group-hover:text-white" />
+              <ScanEye
+                size={16}
+                className="text-indigo-400 group-hover:text-white"
+                aria-hidden="true"
+              />
               <span className="text-[10px] font-black uppercase tracking-widest">{ann.label}</span>
             </button>
           ))}
@@ -162,7 +167,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onSubmit,
 }) => (
   <div className="relative mt-8 group/input">
+    <label htmlFor="assistant-question-input" className="sr-only">
+      Ask the AI assistant a question about the image
+    </label>
     <input
+      id="assistant-question-input"
       type="text"
       className="w-full bg-black/40 border border-white/10 rounded-2xl py-5 pl-8 pr-16 text-sm text-white placeholder:text-slate-600 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/50 outline-none transition-all shadow-inner disabled:opacity-50"
       placeholder={
@@ -174,13 +183,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => e.key === 'Enter' && !isAsking && aiStatus === 'complete' && onSubmit()}
       disabled={isAsking || aiStatus !== 'complete'}
+      aria-label="Question for AI assistant"
     />
     <button
       onClick={onSubmit}
       disabled={!question.trim() || isAsking || aiStatus !== 'complete'}
       className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-xl transition-all hover:scale-105 disabled:opacity-30 disabled:hover:scale-100"
+      aria-label="Send question to AI assistant"
     >
-      <Send size={20} />
+      <Send size={20} aria-hidden="true" />
     </button>
   </div>
 );

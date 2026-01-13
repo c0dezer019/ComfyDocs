@@ -3,11 +3,11 @@
 import React from 'react';
 import { Zap } from 'lucide-react';
 import { SectionCard } from '../ui/SectionCard';
-import { WorkflowGraph } from '../WorkflowGraph';
+import { WorkflowGraph, GraphWorkflow } from '../WorkflowGraph';
 
 interface WorkflowTopologyProps {
   /** Workflow data for the graph */
-  workflowData?: any;
+  workflowData?: GraphWorkflow | undefined;
 }
 
 /**

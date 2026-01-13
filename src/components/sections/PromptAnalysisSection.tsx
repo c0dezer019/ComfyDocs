@@ -263,20 +263,26 @@ const RefinementsSection: React.FC<RefinementsSectionProps> = ({
       ))}
 
       <li key="add-improvement" className="flex items-center gap-3 pt-4">
+        <label htmlFor="new-improvement-input" className="sr-only">
+          Add new improvement suggestion
+        </label>
         <input
+          id="new-improvement-input"
           type="text"
           placeholder="Add observation..."
           className="flex-1 bg-slate-950 border border-white/5 rounded-xl px-5 py-3 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
           value={newImprovement}
           onChange={(e) => onNewImprovementChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onAddImprovement()}
+          aria-label="New improvement observation"
         />
         <button
           onClick={onAddImprovement}
           disabled={!newImprovement.trim()}
           className="p-3.5 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-500 disabled:opacity-50 transition-all"
+          aria-label="Add improvement suggestion"
         >
-          <Plus size={18} />
+          <Plus size={18} aria-hidden="true" />
         </button>
       </li>
     </ul>

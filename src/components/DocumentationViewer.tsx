@@ -11,10 +11,11 @@ import {
   PromptAnalysisSection,
   WorkflowTopology,
 } from './sections';
+import { GraphWorkflow } from './WorkflowGraph';
 
 interface DocumentationViewerProps {
   data: SceneDocumentation;
-  workflowData?: any;
+  workflowData?: GraphWorkflow | undefined;
   isOffline: boolean;
   aiStatus: 'idle' | 'loading' | 'complete' | 'error';
   isRefiningPrompt?: boolean;

@@ -12,7 +12,6 @@ import {
   StickyNote,
   ScanEye,
   Plus,
-  X,
 } from 'lucide-react';
 import { QualityIssue, Annotation } from '@/lib/types';
 import { SectionCard, LoadingPlaceholder, ScoreDisplay } from '../ui/SectionCard';
@@ -54,7 +53,7 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
   const [editingIssueIndex, setEditingIssueIndex] = useState<number | null>(null);
   const [editingIssue, setEditingIssue] = useState<QualityIssue | null>(null);
   const [newIssue, setNewIssue] = useState<Partial<QualityIssue> | null>(null);
-  const [regeneratingFixForId, setRegeneratingFixForId] = useState<string | null>(null);
+  const [_regeneratingFixForId, _setRegeneratingFixForId] = useState<string | null>(null);
   const [passCount, setPassCount] = useState<number>(3);
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0);
   const [isRunningConsensus, setIsRunningConsensus] = useState(false);
@@ -127,15 +126,15 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
     setEditingIssue(null);
 
     if ((noteChanged || descChanged) && onRegenerateIssueFix) {
-      setRegeneratingFixForId(updatedIssue.id);
+      _setRegeneratingFixForId(updatedIssue.id);
       await onRegenerateIssueFix(updatedIssue);
-      setRegeneratingFixForId(null);
+      _setRegeneratingFixForId(null);
     }
   };
 
   const handleAddIssue = async () => {
     if (!newIssue || !newIssue.description || !qualityAnalysis) return;
-    const severity = (newIssue.severity as any) || 'Minor';
+    const severity = (newIssue.severity as QualityIssue['severity']) || 'Minor';
     const score = severity === 'Note' ? 0 : newIssue.score || 0.5;
 
     const issueToAdd: QualityIssue = {
@@ -156,9 +155,9 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
     if (issueToAdd.userNotes) setExpandedNotes((prev) => new Set(prev).add(issueToAdd.id));
 
     if (onRegenerateIssueFix) {
-      setRegeneratingFixForId(issueToAdd.id);
+      _setRegeneratingFixForId(issueToAdd.id);
       await onRegenerateIssueFix(issueToAdd);
-      setRegeneratingFixForId(null);
+      _setRegeneratingFixForId(null);
     }
   };
 
@@ -179,9 +178,9 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
     onUpdateQualityAnalysis({ ...qualityAnalysis, issues: newIssues });
     setEditingNoteId(null);
     if (issue.userNotes !== tempNoteContent && onRegenerateIssueFix) {
-      setRegeneratingFixForId(issue.id);
+      _setRegeneratingFixForId(issue.id);
       await onRegenerateIssueFix(updatedIssue);
-      setRegeneratingFixForId(null);
+      _setRegeneratingFixForId(null);
     }
   };
 
@@ -292,24 +291,40 @@ const ControlsBar: React.FC<ControlsBarProps> = ({
 }) => (
   <div className="flex flex-wrap items-center gap-4">
     <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-      <Filter size={14} className="text-slate-500" />
-      <span className="text-[10px] font-black text-slate-400">{confidenceThreshold}% CONF</span>
+      <Filter size={14} className="text-slate-500" aria-hidden="true" />
+      <label
+        htmlFor="confidence-threshold-slider"
+        className="text-[10px] font-black text-slate-400"
+      >
+        {confidenceThreshold}% CONF
+      </label>
       <input
+        id="confidence-threshold-slider"
         type="range"
         min="0"
         max="100"
         value={confidenceThreshold}
         onChange={(e) => onConfidenceChange(parseInt(e.target.value))}
         className="w-20 h-1 bg-slate-700 rounded-full appearance-none cursor-pointer accent-indigo-500"
+        aria-label="Confidence threshold filter"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={confidenceThreshold}
+        aria-valuetext={`${confidenceThreshold} percent confidence minimum`}
       />
     </div>
 
     <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-      <Gauge size={14} className="text-slate-500" />
+      <Gauge size={14} className="text-slate-500" aria-hidden="true" />
+      <label htmlFor="pass-count-select" className="sr-only">
+        Number of analysis passes
+      </label>
       <select
+        id="pass-count-select"
         value={passCount}
         onChange={(e) => onPassCountChange(Number(e.target.value))}
         className="bg-transparent text-[10px] font-black text-slate-300 uppercase tracking-widest outline-none border-none cursor-pointer"
+        aria-label="Number of consensus analysis passes"
       >
         <option value="1">1 Pass</option>
         <option value="3">3 Passes</option>
@@ -404,9 +419,9 @@ const IssueCard: React.FC<IssueCardProps> = ({
                 <button
                   onClick={onFocus}
                   className="p-1.5 text-indigo-400 hover:text-white bg-indigo-500/10 hover:bg-indigo-600 rounded-lg transition-all"
-                  title="Focus Region"
+                  aria-label={`Focus on ${issue.type} region in image`}
                 >
-                  <ScanEye size={14} />
+                  <ScanEye size={14} aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -417,27 +432,31 @@ const IssueCard: React.FC<IssueCardProps> = ({
             <button
               onClick={onToggleNote}
               className={`p-2 rounded-xl hover:bg-white/10 ${issue.userNotes ? 'text-indigo-400' : 'text-slate-500'}`}
-              title="Context Note"
+              aria-label={`${issue.userNotes ? 'View' : 'Add'} context note for ${issue.type}`}
             >
-              <StickyNote size={16} />
+              <StickyNote size={16} aria-hidden="true" />
             </button>
             <button
               onClick={onStartEdit}
               className="p-2 text-slate-500 hover:text-white rounded-xl hover:bg-white/10"
+              aria-label={`Edit ${issue.type} issue`}
             >
-              <Edit2 size={16} />
+              <Edit2 size={16} aria-hidden="true" />
             </button>
             <button
               onClick={onDelete}
               className="p-2 text-slate-500 hover:text-red-400 rounded-xl hover:bg-white/10"
+              aria-label={`Delete ${issue.type} issue`}
             >
-              <Trash2 size={16} />
+              <Trash2 size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
 
         {isNoteExpanded && (
           <NoteSection
+            issueId={issue.id}
+            issueType={issue.type}
             userNotes={issue.userNotes}
             isEditing={isEditingNote}
             tempContent={tempNoteContent}
@@ -465,7 +484,9 @@ const IssueEditForm: React.FC<IssueEditFormProps> = ({ issue, onChange, onSave, 
       <select
         className="bg-slate-900 border border-white/10 rounded-xl text-xs font-bold uppercase text-slate-300 px-4 py-2"
         value={issue.severity}
-        onChange={(e) => onChange({ ...issue, severity: e.target.value as any })}
+        onChange={(e) =>
+          onChange({ ...issue, severity: e.target.value as QualityIssue['severity'] })
+        }
       >
         <option value="Note">Note</option>
         <option value="Minor">Minor</option>
@@ -479,10 +500,15 @@ const IssueEditForm: React.FC<IssueEditFormProps> = ({ issue, onChange, onSave, 
         onChange={(e) => onChange({ ...issue, type: e.target.value })}
       />
     </div>
+    <label htmlFor={`issue-description-${issue.id}`} className="sr-only">
+      Issue description
+    </label>
     <textarea
+      id={`issue-description-${issue.id}`}
       className="w-full bg-slate-900 border border-white/10 rounded-xl text-sm text-slate-300 px-4 py-4 min-h-[80px] outline-none"
       value={issue.description}
       onChange={(e) => onChange({ ...issue, description: e.target.value })}
+      aria-label="Issue description"
     />
     <div className="flex justify-end gap-3">
       <button
@@ -502,6 +528,8 @@ const IssueEditForm: React.FC<IssueEditFormProps> = ({ issue, onChange, onSave, 
 );
 
 interface NoteSectionProps {
+  issueId?: string;
+  issueType?: string;
   userNotes?: string;
   isEditing: boolean;
   tempContent: string;
@@ -512,6 +540,8 @@ interface NoteSectionProps {
 }
 
 const NoteSection: React.FC<NoteSectionProps> = ({
+  issueId,
+  issueType,
   userNotes,
   isEditing,
   tempContent,
@@ -523,7 +553,7 @@ const NoteSection: React.FC<NoteSectionProps> = ({
   <div className="ml-10 p-5 bg-black/40 border-l-4 border-indigo-500/50 rounded-r-2xl text-sm animate-in slide-in-from-top-2">
     <div className="flex items-center justify-between mb-3">
       <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-        <StickyNote size={12} /> Researcher Context
+        <StickyNote size={12} aria-hidden="true" /> Researcher Context
       </div>
       {!isEditing && (
         <button
@@ -536,10 +566,15 @@ const NoteSection: React.FC<NoteSectionProps> = ({
     </div>
     {isEditing ? (
       <div className="space-y-4">
+        <label htmlFor={`user-note-${issueId}`} className="sr-only">
+          Context note for {issueType}
+        </label>
         <textarea
+          id={`user-note-${issueId}`}
           className="w-full bg-slate-900 border border-white/5 rounded-xl text-sm text-slate-200 p-4 min-h-[100px] outline-none"
           value={tempContent}
           onChange={(e) => onChange(e.target.value)}
+          aria-label={`Context note for ${issueType}`}
         />
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} className="text-[10px] font-black text-slate-500 uppercase">
@@ -574,17 +609,27 @@ const NewIssueForm: React.FC<NewIssueFormProps> = ({ newIssue, onChange, onAdd, 
       New Manual Entry
     </h4>
     <div className="flex gap-4">
+      <label htmlFor="new-issue-severity" className="sr-only">
+        Severity level
+      </label>
       <select
+        id="new-issue-severity"
         className="bg-slate-950 border border-white/10 rounded-xl text-xs font-bold text-slate-300 px-4"
         value={newIssue.severity || 'Minor'}
-        onChange={(e) => onChange({ ...newIssue, severity: e.target.value as any })}
+        onChange={(e) =>
+          onChange({ ...newIssue, severity: e.target.value as QualityIssue['severity'] })
+        }
       >
         <option value="Note">Note</option>
         <option value="Minor">Minor</option>
         <option value="Major">Major</option>
         <option value="Critical">Critical</option>
       </select>
+      <label htmlFor="new-issue-type" className="sr-only">
+        Artifact type
+      </label>
       <input
+        id="new-issue-type"
         type="text"
         placeholder="Artifact Type..."
         className="flex-1 bg-slate-950 border border-white/10 rounded-xl text-sm text-white px-5 py-3 outline-none"
@@ -592,7 +637,11 @@ const NewIssueForm: React.FC<NewIssueFormProps> = ({ newIssue, onChange, onAdd, 
         onChange={(e) => onChange({ ...newIssue, type: e.target.value })}
       />
     </div>
+    <label htmlFor="new-issue-description" className="sr-only">
+      Observation details
+    </label>
     <textarea
+      id="new-issue-description"
       placeholder="Observation details..."
       className="w-full bg-slate-950 border border-white/10 rounded-xl text-sm text-slate-300 px-5 py-4 min-h-[100px] outline-none"
       value={newIssue.description || ''}

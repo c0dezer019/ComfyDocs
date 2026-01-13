@@ -25,6 +25,7 @@ import { calculateFileHash, getCachedAnalysis, cacheAnalysis } from '@/utils/cac
 import { encrypt, decrypt } from '@/utils/encryption';
 import { DocumentationViewer } from '@/components/DocumentationViewer';
 import { ReportViewer } from '@/components/ReportViewer';
+import type { GraphWorkflow } from '@/components/WorkflowGraph';
 import { Landing } from '@/components/Landing';
 import { SettingsModal } from '@/components/SettingsModal';
 import { UnlockModal } from '@/components/UnlockModal';
@@ -602,7 +603,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-8">
+      <main id="main-content" className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-8">
         {errorMessage && (
           <div className="max-w-[1600px] mx-auto px-6 mb-4">
             <div className="bg-rose-600/10 border border-rose-500/20 text-rose-300 text-sm rounded px-4 py-2">
@@ -666,6 +667,7 @@ export default function HomePage() {
             <div className="lg:col-span-3 flex flex-col gap-6 lg:sticky lg:top-24 no-print">
               <div className="glass-card rounded-2xl p-4">
                 <div className="aspect-square relative rounded-xl overflow-hidden bg-slate-950/50 flex items-center justify-center group/preview ring-1 ring-white/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewUrl}
                     alt="ComfyUI Generation"
@@ -675,9 +677,9 @@ export default function HomePage() {
                     <button
                       onClick={() => handleOpenImagePreview()}
                       className="p-2.5 bg-black/70 hover:bg-black text-white rounded-xl backdrop-blur-md border border-white/10"
-                      title="Zoom & Inspect"
+                      aria-label="Open full-size image viewer with annotations"
                     >
-                      <ZoomIn size={18} />
+                      <ZoomIn size={18} aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -714,7 +716,7 @@ export default function HomePage() {
                     {activeTab === 'docs' && (
                       <DocumentationViewer
                         data={analysisResult.data}
-                        workflowData={analysisResult.rawWorkflow}
+                        workflowData={analysisResult.rawWorkflow as GraphWorkflow}
                         isOffline={analysisResult.data.isOffline || !localApiKey}
                         aiStatus={aiStatus}
                         onUpdateData={handleUpdateData}

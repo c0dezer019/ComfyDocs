@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { SceneDocumentation } from '@/lib/types';
-import { Download, Printer, FileText, ImageDown, CheckCircle2, FileJson } from 'lucide-react';
+import { Printer, FileText, ImageDown, CheckCircle2, FileJson } from 'lucide-react';
 import { embedReportInPng } from '@/utils/pngWriter';
 
 interface ReportViewerProps {
@@ -206,7 +206,12 @@ ${
           <div className="col-span-4">
             {imageSrc && (
               <div className="border border-slate-200 p-1 shadow-sm bg-white rotate-1">
-                <img src={imageSrc} className="w-full h-auto object-cover" alt="Subject" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageSrc}
+                  className="w-full h-auto object-cover"
+                  alt="ComfyUI generation under forensic analysis"
+                />
               </div>
             )}
           </div>
@@ -247,10 +252,18 @@ ${
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500 bg-slate-50">
-                <th className="py-2 px-2 w-20">Severity</th>
-                <th className="py-2 px-2 w-28">Type</th>
-                <th className="py-2 px-2">Description & Remediation</th>
-                <th className="py-2 px-2 w-12 text-right">Score</th>
+                <th scope="col" className="py-2 px-2 w-20">
+                  Severity
+                </th>
+                <th scope="col" className="py-2 px-2 w-28">
+                  Type
+                </th>
+                <th scope="col" className="py-2 px-2">
+                  Description & Remediation
+                </th>
+                <th scope="col" className="py-2 px-2 w-12 text-right">
+                  Score
+                </th>
               </tr>
             </thead>
             <tbody>

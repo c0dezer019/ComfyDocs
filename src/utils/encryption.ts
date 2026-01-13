@@ -39,6 +39,7 @@ export const decrypt = (encoded: string, password: string): string => {
     }
     return '';
   } catch (e) {
+    console.warn('Decryption failed', e);
     return '';
   }
 };

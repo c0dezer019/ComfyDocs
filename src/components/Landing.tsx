@@ -20,7 +20,7 @@ interface LandingProps {
   demoUrl?: string;
 }
 
-export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoUrl }) => {
+export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoUrl: _demoUrl }) => {
   return (
     <div className="flex flex-col items-center justify-center py-12 md:py-20 animate-in fade-in duration-700">
       {/* Hero Section */}
@@ -28,7 +28,7 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
 
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-black uppercase tracking-widest mb-6 animate-in slide-in-from-top-2 duration-500">
-          <Sparkles size={12} /> The Gold Standard for Stable Diffusion QA
+          <Sparkles size={12} aria-hidden="true" /> The Gold Standard for Stable Diffusion QA
         </div>
 
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-8 leading-tight animate-in slide-in-from-bottom-3 duration-700 delay-200">
@@ -49,7 +49,10 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
             className="group relative inline-flex items-center justify-center gap-3 px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold text-lg transition-all shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-1 w-full sm:w-auto overflow-hidden"
           >
             Try Interactive Demo
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight
+              className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+              aria-hidden="true"
+            />
           </button>
           <button
             onClick={onGetStarted}
@@ -73,9 +76,10 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
           <div className="lg:col-span-7 relative">
             <div className="glass-card p-2 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative group bg-black/40">
               <div className="aspect-[16/9] relative rounded-2xl overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/demo2.png"
-                  alt="Forensic Demo"
+                  alt="Forensic sample: red-headed guitarist showing quality 0.8/10 and prompt adherence 7.5/10"
                   className="w-full h-full object-cover rounded-2xl opacity-90 group-hover:opacity-100 transition-opacity duration-700"
                 />
               </div>
@@ -85,10 +89,10 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
           <div className="lg:col-span-5 space-y-6">
             <div className="p-8 bg-slate-900/50 border border-white/5 rounded-3xl backdrop-blur-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Bot size={40} />
+                <Bot size={40} aria-hidden="true" />
               </div>
               <h4 className="text-xs font-black text-sky-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                <Bot size={16} /> Analysis Assistant
+                <Bot size={16} aria-hidden="true" /> Analysis Assistant
               </h4>
               <div className="space-y-4">
                 <div className="bg-indigo-600/20 p-3 rounded-xl rounded-tl-none border border-indigo-500/20 text-xs text-indigo-100">
@@ -132,32 +136,32 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
       {/* Features Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-32 px-4 w-full max-w-7xl">
         <FeatureCard
-          icon={<FileJson className="w-6 h-6 text-emerald-400" />}
+          icon={<FileJson className="w-6 h-6 text-emerald-400" aria-hidden="true" />}
           title="Metadata Recovery"
           desc="Instantly extract workflow JSON, prompts, seeds, and model hashes from embedded PNG chunks."
         />
         <FeatureCard
-          icon={<Share2 className="w-6 h-6 text-sky-400" />}
+          icon={<Share2 className="w-6 h-6 text-sky-400" aria-hidden="true" />}
           title="Interactive Topology"
           desc="Visualize the original ComfyUI node graph. Trace every parameter and link with our custom engine."
         />
         <FeatureCard
-          icon={<ScanEye className="w-6 h-6 text-rose-400" />}
+          icon={<ScanEye className="w-6 h-6 text-rose-400" aria-hidden="true" />}
           title="Deep Pixel Forensics"
           desc="Identify anatomical defects and artifacts with pixel-level precision using Gemini Flash & Pro."
         />
         <FeatureCard
-          icon={<Bot className="w-6 h-6 text-violet-400" />}
+          icon={<Bot className="w-6 h-6 text-violet-400" aria-hidden="true" />}
           title="Analysis Assistant"
           desc="Directly interrogation the AI about your generation. Ask for fixes, critiques, or technical detail."
         />
         <FeatureCard
-          icon={<ScrollText className="w-6 h-6 text-amber-400" />}
+          icon={<ScrollText className="w-6 h-6 text-amber-400" aria-hidden="true" />}
           title="Embedded Reports"
           desc="Generate forensic PDF reports and embed the analysis JSON back into the original PNG file."
         />
         <FeatureCard
-          icon={<Lock className="w-6 h-6 text-slate-400" />}
+          icon={<Lock className="w-6 h-6 text-slate-400" aria-hidden="true" />}
           title="Secure BYOK"
           desc="Your API keys are AES-256 encrypted and stored locally. Privacy-first architecture."
         />
@@ -169,15 +173,15 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
         </div>
         <div className="flex flex-wrap items-center justify-center gap-12">
           <div className="flex items-center gap-3">
-            <Cpu size={24} className="text-slate-400" />
+            <Cpu size={24} className="text-slate-400" aria-hidden="true" />
             <span className="font-bold text-slate-300">Gemini 3.0 Pro</span>
           </div>
           <div className="flex items-center gap-3">
-            <Database size={24} className="text-slate-400" />
+            <Database size={24} className="text-slate-400" aria-hidden="true" />
             <span className="font-bold text-slate-300">IndexedDB Persistence</span>
           </div>
           <div className="flex items-center gap-3">
-            <Sparkles size={24} className="text-slate-400" />
+            <Sparkles size={24} className="text-slate-400" aria-hidden="true" />
             <span className="font-bold text-slate-300">ComfyUI Native</span>
           </div>
         </div>

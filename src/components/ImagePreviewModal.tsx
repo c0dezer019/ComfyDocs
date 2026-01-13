@@ -13,7 +13,7 @@ import {
   Trash2,
   Plus,
   Move,
-  RotateCw
+  RotateCw,
 } from 'lucide-react';
 import { Annotation } from '@/lib/types';
 import {
@@ -116,7 +116,24 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     }
 
     prevAnnotationCountRef.current = annotations.length;
-  }, [annotations.length, initialFocus]);
+  }, [annotations, initialFocus]);
+
+  // Make focus logic stable for hook deps
+  const focusOnAnnotation = useCallback(
+    (ann: Annotation) => {
+      if (!containerRef.current || !imageRef.current || !ann.box_2d || imgDims.w === 0) return;
+
+      const layoutW = imageRef.current.clientWidth;
+      const layoutH = imageRef.current.clientHeight;
+
+      if (layoutW === 0 || layoutH === 0) return;
+
+      const viewport = calculateFocusViewport(ann.box_2d, layoutW, layoutH);
+      setScale(viewport.scale);
+      setPosition(viewport.position);
+    },
+    [imgDims.w],
+  );
 
   // Filter annotations based on visibility toggles
   const activeAnnotations = annotations.filter((_, idx) => visibleAnnotations.has(idx));
@@ -175,19 +192,17 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
         setIsFocusMode(false);
       }
     }
-  }, [isOpen, imageLoaded, annotations.length]);
+  }, [isOpen, imageLoaded, annotations, initialFocus]);
 
   // Separate effect to handle initialFocus changes (can happen while modal is open)
   useEffect(() => {
     if (!isOpen || !imageLoaded) return;
 
-    if (initialFocus) {
+    if (initialFocus && initialFocus.box_2d) {
       focusOnAnnotation(initialFocus);
       const focusedIdx = annotations.findIndex(
         (ann) =>
-          ann.box_2d &&
-          initialFocus.box_2d &&
-          ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d![i]) < 0.001),
+          ann.box_2d && ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d[i]) < 0.001),
       );
       if (focusedIdx !== -1) {
         setVisibleAnnotations(new Set([focusedIdx]));
@@ -198,7 +213,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       setVisibleAnnotations(new Set(annotations.map((_, idx) => idx)));
       setIsFocusMode(false);
     }
-  }, [isOpen, imageLoaded, initialFocus, annotations, isFocusMode]);
+  }, [isOpen, imageLoaded, initialFocus, annotations, isFocusMode, focusOnAnnotation]);
 
   // Focus on label input when editing
   useEffect(() => {
@@ -238,6 +253,90 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, editMode, editingLabelIdx, selectedAnnotationIdx, onClose]);
 
+  // Keyboard navigation for panning (global)
+  useEffect(() => {
+    if (!isOpen || editMode !== 'none') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const panAmount = 50;
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          setPosition((prev) => ({ ...prev, y: prev.y + panAmount }));
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setPosition((prev) => ({ ...prev, y: prev.y - panAmount }));
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          setPosition((prev) => ({ ...prev, x: prev.x + panAmount }));
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          setPosition((prev) => ({ ...prev, x: prev.x - panAmount }));
+          break;
+        case '+':
+        case '=':
+          e.preventDefault();
+          setScale((s) => Math.min(s + 0.5, 20));
+          break;
+        case '-':
+        case '_':
+          e.preventDefault();
+          setScale((s) => Math.max(s - 0.5, 0.5));
+          break;
+        case '0':
+          e.preventDefault();
+          resetView();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, editMode]);
+
+  // Keyboard handler attached to the container for accessibility lint rules
+  const handleContainerKeyDown = (e: React.KeyboardEvent) => {
+    if (editMode !== 'none') return;
+    const panAmount = 50;
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault();
+        setPosition((prev) => ({ ...prev, y: prev.y + panAmount }));
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setPosition((prev) => ({ ...prev, y: prev.y - panAmount }));
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        setPosition((prev) => ({ ...prev, x: prev.x + panAmount }));
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        setPosition((prev) => ({ ...prev, x: prev.x - panAmount }));
+        break;
+      case '+':
+      case '=':
+        e.preventDefault();
+        setScale((s) => Math.min(s + 0.5, 20));
+        break;
+      case '-':
+      case '_':
+        e.preventDefault();
+        setScale((s) => Math.max(s - 0.5, 0.5));
+        break;
+      case '0':
+        e.preventDefault();
+        resetView();
+        break;
+      default:
+        break;
+    }
+  };
+
   const resetView = () => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
@@ -263,19 +362,6 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       });
       setImageLoaded(true);
     }
-  };
-
-  const focusOnAnnotation = (ann: Annotation) => {
-    if (!containerRef.current || !imageRef.current || !ann.box_2d || imgDims.w === 0) return;
-
-    const layoutW = imageRef.current.clientWidth;
-    const layoutH = imageRef.current.clientHeight;
-
-    if (layoutW === 0 || layoutH === 0) return;
-
-    const viewport = calculateFocusViewport(ann.box_2d, layoutW, layoutH);
-    setScale(viewport.scale);
-    setPosition(viewport.position);
   };
 
   // Convert screen coordinates to normalized image coordinates
@@ -490,21 +576,23 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
             <button
               onClick={() => setScale((s) => Math.min(s + 1, 20))}
               className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              aria-label="Zoom in"
             >
-              <ZoomIn size={20} />
+              <ZoomIn size={20} aria-hidden="true" />
             </button>
             <button
               onClick={() => setScale((s) => Math.max(s - 1, 0.5))}
               className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              aria-label="Zoom out"
             >
-              <ZoomOut size={20} />
+              <ZoomOut size={20} aria-hidden="true" />
             </button>
             <button
               onClick={resetView}
               className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              title="Reset View"
+              aria-label="Reset view to original position and zoom"
             >
-              <RotateCcw size={20} />
+              <RotateCcw size={20} aria-hidden="true" />
             </button>
           </div>
 
@@ -521,9 +609,12 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                     ? 'bg-emerald-600 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800'
                 }`}
-                title="Create Annotation"
+                aria-label={
+                  editMode === 'create' ? 'Cancel creating annotation' : 'Create new annotation'
+                }
+                aria-pressed={editMode === 'create'}
               >
-                <Plus size={20} />
+                <Plus size={20} aria-hidden="true" />
               </button>
             </div>
           )}
@@ -534,9 +625,15 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition-all backdrop-blur-md"
-                title={isFocusMode ? 'Focused on single annotation' : 'Toggle annotation visibility'}
+                aria-label={
+                  isFocusMode
+                    ? 'Focused on single annotation. Click to view all annotations.'
+                    : `Toggle annotation visibility menu. ${visibleAnnotations.size} of ${annotations.length} annotations visible.`
+                }
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="true"
               >
-                <Eye size={18} />
+                <Eye size={18} aria-hidden="true" />
                 <span className="text-sm font-medium">
                   {isFocusMode
                     ? 'Focused'
@@ -545,6 +642,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                 <ChevronDown
                   size={16}
                   className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
                 />
               </button>
 
@@ -554,15 +652,20 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                   <button
                     onClick={toggleAllAnnotations}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors border-b border-slate-800"
+                    aria-label={
+                      visibleAnnotations.size === annotations.length
+                        ? `Hide all ${annotations.length} annotations`
+                        : `Show all ${annotations.length} annotations`
+                    }
                   >
                     {visibleAnnotations.size === annotations.length ? (
                       <>
-                        <EyeOff size={16} />
+                        <EyeOff size={16} aria-hidden="true" />
                         <span>Hide All</span>
                       </>
                     ) : (
                       <>
-                        <Eye size={16} />
+                        <Eye size={16} aria-hidden="true" />
                         <span>Show All</span>
                       </>
                     )}
@@ -580,11 +683,21 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                           <button
                             onClick={() => toggleAnnotation(idx)}
                             className="flex items-center gap-3 flex-1"
+                            aria-label={`${isVisible ? 'Hide' : 'Show'} annotation ${idx + 1}: ${ann.label}`}
+                            aria-pressed={isVisible}
                           >
                             {isVisible ? (
-                              <Eye size={16} className="text-indigo-400 flex-shrink-0" />
+                              <Eye
+                                size={16}
+                                className="text-indigo-400 flex-shrink-0"
+                                aria-hidden="true"
+                              />
                             ) : (
-                              <EyeOff size={16} className="text-slate-600 flex-shrink-0" />
+                              <EyeOff
+                                size={16}
+                                className="text-slate-600 flex-shrink-0"
+                                aria-hidden="true"
+                              />
                             )}
                             <span
                               className={`font-mono text-xs flex-1 text-left truncate ${isVisible ? 'text-white' : 'text-slate-500'}`}
@@ -599,9 +712,9 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                             <button
                               onClick={() => handleDeleteAnnotation(idx)}
                               className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
-                              title="Delete Annotation"
+                              aria-label={`Delete annotation ${idx + 1}: ${ann.label}`}
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={14} aria-hidden="true" />
                             </button>
                           )}
                         </div>
@@ -653,14 +766,15 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
         <button
           onClick={onClose}
           className="pointer-events-auto p-3 bg-slate-900/80 hover:bg-rose-600 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition-all"
+          aria-label="Close image preview modal"
         >
-          <X size={24} />
+          <X size={24} aria-hidden="true" />
         </button>
       </div>
 
       {/* Image Container */}
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-      <div
+      {}
+      <div // eslint-disable-line jsx-a11y/no-noninteractive-element-interactions
         ref={containerRef}
         className={`flex-1 w-full h-full overflow-hidden flex items-center justify-center select-none ${
           editMode === 'create'
@@ -671,6 +785,10 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                 ? 'cursor-grabbing'
                 : 'cursor-grab active:cursor-grabbing'
         }`}
+        role="application"
+        aria-label="Zoomable and pannable image viewer. Use arrow keys to pan, +/- to zoom, 0 to reset."
+        tabIndex={0} // eslint-disable-line jsx-a11y/no-noninteractive-tabindex
+        onKeyDown={handleContainerKeyDown}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -688,6 +806,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           }}
           className="relative flex items-center justify-center transition-transform"
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imageRef}
             src={imageSrc}
@@ -733,10 +852,11 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                 const x = xmin * imgDims.w;
                 const y = ymin * imgDims.h;
 
-                const isFocused =
+                const isFocused = Boolean(
                   initialFocus &&
                   initialFocus.box_2d &&
-                  ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d![i]) < 0.001);
+                  ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d[i]) < 0.001),
+                );
 
                 const isSelected = selectedAnnotationIdx === realIdx;
                 const isHovered = hoveredAnnotationIdx === realIdx && !isSelected;

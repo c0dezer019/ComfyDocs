@@ -14,7 +14,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[200] focus:bg-indigo-600 focus:text-white focus:px-4 focus:py-2 focus:m-2"
+        >
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

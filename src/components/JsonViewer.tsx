@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Copy, Download, Check } from 'lucide-react';
 
 interface JsonViewerProps {
-  data: any;
+  data: unknown;
   filename: string;
   label: string;
 }

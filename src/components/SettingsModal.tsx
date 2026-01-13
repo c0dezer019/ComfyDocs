@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Key,
   ShieldCheck,
   ExternalLink,
   Trash2,
@@ -103,7 +102,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
       onClick={handleBackdropClick}
@@ -174,9 +172,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="button"
                     onClick={() => setShowKey(!showKey)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    aria-label={showKey ? 'Hide API key' : 'Show API key'}
                     tabIndex={-1}
                   >
-                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showKey ? (
+                      <EyeOff size={16} aria-hidden="true" />
+                    ) : (
+                      <Eye size={16} aria-hidden="true" />
+                    )}
                   </button>
                 </div>
               </div>

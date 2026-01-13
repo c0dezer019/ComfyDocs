@@ -1,6 +1,6 @@
 export interface ComfyMetadata {
-  workflow: any | null;
-  prompt: any | null;
+  workflow: unknown | null;
+  prompt: unknown | null;
   report?: SceneDocumentation | null;
 }
 
@@ -95,5 +95,5 @@ export interface AnalysisResult {
   data: SceneDocumentation;
   workflowJson: string;
   promptJson: string;
-  rawWorkflow: any; // Add raw workflow object for the graph
+  rawWorkflow: unknown; // Add raw workflow object for the graph
 }

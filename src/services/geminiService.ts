@@ -11,16 +11,18 @@ const getApiKey = (): string => {
 };
 
 // Enhanced error handling helper for consistent CSP/CORS error reporting
-const handleApiError = (error: any, defaultMessage: string): never => {
+const handleApiError = (error: unknown, defaultMessage: string): never => {
+  const err = (error as { message?: string; name?: string } | undefined) ?? {};
+
   if (
-    error.message?.includes('Requested entity was not found') ||
-    error.message?.includes('API_KEY_NOT_FOUND')
+    err.message?.includes('Requested entity was not found') ||
+    err.message?.includes('API_KEY_NOT_FOUND')
   ) {
     throw new Error('API_KEY_NOT_FOUND');
   }
 
   // Enhanced error handling for CSP/CORS issues
-  if (error.name === 'TypeError' && error.message?.includes('Failed to fetch')) {
+  if (err.name === 'TypeError' && err.message?.includes('Failed to fetch')) {
     console.error('Network Error (possible CSP/CORS issue):', error);
 
     // Check if we're on mobile and provide specific guidance
@@ -39,14 +41,14 @@ const handleApiError = (error: any, defaultMessage: string): never => {
     }
   }
 
-  if (error.message?.includes('Content Security Policy') || error.message?.includes('CSP')) {
+  if (err.message?.includes('Content Security Policy') || err.message?.includes('CSP')) {
     console.error('CSP Error:', error);
     throw new Error(
       'Security policy error: Your browser is blocking the AI service connection. Please check your browser settings or contact support.',
     );
   }
 
-  if (error.message?.includes('CORS') || error.message?.includes('cross-origin')) {
+  if (err.message?.includes('CORS') || err.message?.includes('cross-origin')) {
     console.error('CORS Error:', error);
     throw new Error(
       'Cross-origin error: Unable to connect to AI service due to browser security restrictions.',
@@ -54,7 +56,7 @@ const handleApiError = (error: any, defaultMessage: string): never => {
   }
 
   console.error('Gemini API Error:', error);
-  throw new Error(`${defaultMessage}: ${error.message || 'Unknown error'}`);
+  throw new Error(`${defaultMessage}: ${err.message || 'Unknown error'}`);
 };
 
 export const generateSceneDocumentation = async (
@@ -219,7 +221,7 @@ export const generateSceneDocumentation = async (
       return parsed;
     }
     throw new Error('Empty response from AI');
-  } catch (error: any) {
+  } catch (error: unknown) {
     return handleApiError(error, 'Failed to generate documentation');
   }
 };
@@ -268,7 +270,7 @@ export const runConsensusQualityAnalysis = async (
   const allRawIssues = results
     .map((r) => JSON.parse(r.text || '{}').issues || [])
     .flat()
-    .map((i: any) => i.description)
+    .map((i) => (i as { description?: string }).description)
     .join('\n');
 
   // 2. Run Judge Pass using Pro (smarter) to consolidate
@@ -381,8 +383,9 @@ export const generateIssueFix = async (
 
     if (response.text) return JSON.parse(response.text).fix;
     throw new Error('Empty response');
-  } catch (error: any) {
-    if (error.message?.includes('Requested entity was not found')) {
+  } catch (error: unknown) {
+    const err = (error as { message?: string } | undefined) ?? {};
+    if (err.message?.includes('Requested entity was not found')) {
       throw new Error('API_KEY_NOT_FOUND');
     }
     return 'Could not generate fix.';
@@ -400,7 +403,9 @@ export const generateIssuesFromNotes = async (
   const ai = new GoogleGenAI({ apiKey });
 
   // Construct parts array
-  const parts: any[] = [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }];
+  const parts: Array<Record<string, unknown>> = [
+    { inlineData: { mimeType: 'image/png', data: imageBase64 } },
+  ];
 
   // Add reference images
   referenceImages.forEach((img) => {
@@ -466,7 +471,7 @@ export const generateIssuesFromNotes = async (
       }));
     }
     throw new Error('Empty response');
-  } catch (error: any) {
+  } catch (error: unknown) {
     return handleApiError(error, 'Failed to generate issues from notes');
   }
 };
@@ -502,7 +507,7 @@ export const refreshPromptAnalysis = async (
 
     if (response.text) return JSON.parse(response.text) as PromptAnalysis;
     throw new Error('Empty response');
-  } catch (error: any) {
+  } catch (error: unknown) {
     return handleApiError(error, 'Failed to refresh analysis');
   }
 };
@@ -579,7 +584,7 @@ export const askQuestion = async (
 
     if (response.text) return JSON.parse(response.text);
     throw new Error('Empty response');
-  } catch (error: any) {
+  } catch (error: unknown) {
     return handleApiError(error, 'Failed to get answer');
   }
 };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Lock, Unlock, X, AlertCircle } from 'lucide-react';
+import { Lock, Unlock, AlertCircle } from 'lucide-react';
 
 interface UnlockModalProps {
   isOpen: boolean;
@@ -40,7 +40,11 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({ isOpen, onUnlock, onCa
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <label htmlFor="unlock-password" className="sr-only">
+                Enter password to decrypt API key
+              </label>
               <input
+                id="unlock-password"
                 type="password"
                 value={password}
                 onChange={(e) => {
@@ -48,11 +52,16 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({ isOpen, onUnlock, onCa
                   setError(false);
                 }}
                 placeholder="Enter Password"
+                aria-invalid={error}
+                aria-describedby={error ? 'password-error' : undefined}
                 className={`w-full bg-slate-950 border ${error ? 'border-red-500' : 'border-slate-700'} rounded-lg py-3 px-4 text-center text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all`}
               />
               {error && (
-                <div className="flex items-center justify-center gap-2 mt-2 text-red-400 text-xs">
-                  <AlertCircle size={12} />
+                <div
+                  id="password-error"
+                  className="flex items-center justify-center gap-2 mt-2 text-red-400 text-xs"
+                >
+                  <AlertCircle size={12} aria-hidden="true" />
                   <span>Incorrect Password</span>
                 </div>
               )}

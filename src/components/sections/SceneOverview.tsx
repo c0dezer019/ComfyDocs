@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layers, Edit2, Plus, BookOpen, Loader2 } from 'lucide-react';
+import { Layers, Edit2, Plus, BookOpen } from 'lucide-react';
 import { SectionCard } from '../ui/SectionCard';
 
 interface SceneOverviewItem {
