@@ -63,7 +63,7 @@ export default function HomePage() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<'docs' | 'report'>('docs');
 
-  const [showLanding, setShowLanding] = useState<boolean>(true);
+  const [showLanding, setShowLanding] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to safely extract messages from unknown errors
