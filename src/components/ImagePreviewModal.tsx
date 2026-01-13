@@ -16,6 +16,13 @@ import {
   RotateCw
 } from 'lucide-react';
 import { Annotation } from '@/lib/types';
+import {
+  screenToNormalized as screenToNormalizedPure,
+  calculateCreationBox,
+  calculateFocusViewport,
+  calculateLeaderLinePoints,
+} from '@/utils/annotationGeometry';
+import { getAnnotationColor, getStrokeWidth } from '@/utils/annotationStyles';
 
 interface AnnotationWithMeta extends Annotation {
   labelRotation?: number; // Degrees for label rotation
@@ -261,37 +268,22 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   const focusOnAnnotation = (ann: Annotation) => {
     if (!containerRef.current || !imageRef.current || !ann.box_2d || imgDims.w === 0) return;
 
-    const [ymin, xmin, ymax, xmax] = ann.box_2d;
     const layoutW = imageRef.current.clientWidth;
     const layoutH = imageRef.current.clientHeight;
 
     if (layoutW === 0 || layoutH === 0) return;
 
-    const centerX = (xmin + xmax) / 2;
-    const centerY = (ymin + ymax) / 2;
-    const boxW = xmax - xmin;
-    const boxH = ymax - ymin;
-
-    let targetScale = Math.min(0.4 / boxW, 0.4 / boxH);
-    targetScale = Math.max(1.5, Math.min(8, targetScale));
-
-    const offsetX = (0.5 - centerX) * layoutW * targetScale;
-    const offsetY = (0.5 - centerY) * layoutH * targetScale;
-
-    setScale(targetScale);
-    setPosition({ x: offsetX, y: offsetY });
+    const viewport = calculateFocusViewport(ann.box_2d, layoutW, layoutH);
+    setScale(viewport.scale);
+    setPosition(viewport.position);
   };
 
   // Convert screen coordinates to normalized image coordinates
   const screenToNormalized = useCallback(
     (clientX: number, clientY: number): { x: number; y: number } | null => {
       if (!imageRef.current || !containerRef.current) return null;
-
       const imgRect = imageRef.current.getBoundingClientRect();
-      const x = (clientX - imgRect.left) / imgRect.width;
-      const y = (clientY - imgRect.top) / imgRect.height;
-
-      return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+      return screenToNormalizedPure(clientX, clientY, imgRect);
     },
     [],
   );
@@ -387,7 +379,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     }
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = () => {
     if (isCreating && createStart && createEnd && onAnnotationCreate) {
       // Create new annotation if box is large enough
       const width = Math.abs(createEnd.x - createStart.x);
@@ -486,14 +478,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
   // Calculate the creation preview box
   const creationBox =
-    isCreating && createStart && createEnd
-      ? {
-          ymin: Math.min(createStart.y, createEnd.y),
-          xmin: Math.min(createStart.x, createEnd.x),
-          ymax: Math.max(createStart.y, createEnd.y),
-          xmax: Math.max(createStart.x, createEnd.x),
-        }
-      : null;
+    isCreating && createStart && createEnd ? calculateCreationBox(createStart, createEnd) : null;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-300 overflow-hidden">
@@ -757,60 +742,18 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                 const isHovered = hoveredAnnotationIdx === realIdx && !isSelected;
 
                 // Color priority: selected (green) > hovered (cyan) > focused (rose) > default (indigo)
-                const color = isSelected
-                  ? '#10b981'
-                  : isHovered
-                    ? '#22d3d8'
-                    : isFocused
-                      ? '#f43f5e'
-                      : '#6366f1';
+                const color = getAnnotationColor(isSelected, isHovered, !!isFocused);
 
-                // Label positioning with rotation - origin slides along box perimeter
-                const leaderLength = Math.max(imgDims.w, imgDims.h) * 0.05;
-                const shoulderLength = Math.max(imgDims.w, imgDims.h) * 0.02;
-                const labelPadding = Math.max(imgDims.w, imgDims.h) * 0.01;
+                // Calculate leader line positioning
+                const isRightSide = (xmin + xmax) / 2 > 0.5;
+                const { originX, originY, destX, destY, shoulderEndX, textX, dirX, dirY } =
+                  calculateLeaderLinePoints(ann.box_2d, imgDims, ann.labelRotation, isRightSide);
 
-                // Box center and half-dimensions
+                // Box center and half-dimensions (needed for rotate handle)
                 const cx = x + width / 2;
                 const cy = y + height / 2;
                 const hw = width / 2;
                 const hh = height / 2;
-
-                // Rotation angle determines where on perimeter the leader attaches
-                const labelRotation = ann.labelRotation || 0;
-                // Default angle: point up-left for right-side boxes, up-right for left-side
-                const isRightSide = (xmin + xmax) / 2 > 0.5;
-                const baseAngle = isRightSide ? 135 : 45; // degrees from up
-                const angle = baseAngle + labelRotation;
-                const angleRad = (angle * Math.PI) / 180;
-
-                // Direction vector (pointing outward from center)
-                const dirX = Math.sin(angleRad);
-                const dirY = -Math.cos(angleRad);
-
-                // Find intersection of ray from center with box perimeter
-                let t: number;
-                if (Math.abs(dirX) < 0.0001) {
-                  t = hh / Math.abs(dirY);
-                } else if (Math.abs(dirY) < 0.0001) {
-                  t = hw / Math.abs(dirX);
-                } else {
-                  const tx = hw / Math.abs(dirX);
-                  const ty = hh / Math.abs(dirY);
-                  t = Math.min(tx, ty);
-                }
-
-                // Origin is on the box perimeter
-                const originX = cx + dirX * t;
-                const originY = cy + dirY * t;
-
-                // Leader extends outward in the same direction
-                const destX = originX + dirX * leaderLength;
-                const destY = originY + dirY * leaderLength;
-
-                // Shoulder extends horizontally from dest (always horizontal for readability)
-                const shoulderEndX = dirX < 0 ? destX - shoulderLength : destX + shoulderLength;
-                const textX = dirX < 0 ? shoulderEndX - labelPadding : shoulderEndX + labelPadding;
 
                 return (
                   <g
@@ -834,7 +777,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                             : 'none'
                       }
                       stroke={color}
-                      strokeWidth={isSelected ? '3' : isHovered ? '2.5' : '2'}
+                      strokeWidth={getStrokeWidth(isSelected, isHovered)}
                       vectorEffect="non-scaling-stroke"
                       style={{ cursor: canEdit ? 'pointer' : 'default' }}
                       className={`annotation-control ${isFocused ? 'animate-pulse' : ''}`}
