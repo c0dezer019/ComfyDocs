@@ -13,9 +13,7 @@ import {
   Trash2,
   Plus,
   Move,
-  RotateCw,
-  Check,
-  GripVertical,
+  RotateCw
 } from 'lucide-react';
 import { Annotation } from '@/lib/types';
 
@@ -60,6 +58,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   // Annotation visibility controls (dev mode)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [visibleAnnotations, setVisibleAnnotations] = useState<Set<number>>(new Set());
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Editing state
   const [editMode, setEditMode] = useState<EditMode>('none');
@@ -94,10 +93,11 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   // Initialize visibility only when modal opens or new annotations are added
   useEffect(() => {
     const prevCount = prevAnnotationCountRef.current;
-    prevAnnotationCountRef.current = annotations.length;
 
     // Only update visibility if annotations were added (not just updated)
-    if (annotations.length > prevCount) {
+    // Don't auto-add if we have initialFocus (let the focus effect handle it)
+    // Also don't run on initial mount when modal opens (prevCount === 0 and modal just opened)
+    if (annotations.length > prevCount && !initialFocus && prevCount > 0) {
       // Add new annotations to visible set
       setVisibleAnnotations((prev) => {
         const next = new Set(prev);
@@ -107,12 +107,16 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
         return next;
       });
     }
-  }, [annotations.length]);
+
+    prevAnnotationCountRef.current = annotations.length;
+  }, [annotations.length, initialFocus]);
 
   // Filter annotations based on visibility toggles
   const activeAnnotations = annotations.filter((_, idx) => visibleAnnotations.has(idx));
 
   const toggleAnnotation = (idx: number) => {
+    // Exit focus mode when manually toggling annotations
+    setIsFocusMode(false);
     setVisibleAnnotations((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) {
@@ -125,6 +129,8 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   };
 
   const toggleAllAnnotations = () => {
+    // Exit focus mode when toggling all
+    setIsFocusMode(false);
     if (visibleAnnotations.size === annotations.length) {
       setVisibleAnnotations(new Set());
     } else {
@@ -135,17 +141,19 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   // Track if modal was just opened to avoid resetting on annotation updates
   const prevIsOpenRef = useRef(false);
 
-  // Effect to handle initial focus after image is confirmed loaded
-  // Only runs when modal opens or initialFocus changes - NOT when annotations update
+  // Effect to handle modal open/close
   useEffect(() => {
     const justOpened = isOpen && !prevIsOpenRef.current;
+    const justClosed = !isOpen && prevIsOpenRef.current;
     prevIsOpenRef.current = isOpen;
 
-    if (!isOpen) {
+    if (justClosed) {
       // Reset edit state when modal closes
       resetEditState();
       // Reset annotation count ref so next open initializes properly
       prevAnnotationCountRef.current = 0;
+      setIsFocusMode(false);
+      setVisibleAnnotations(new Set());
       return;
     }
 
@@ -153,23 +161,37 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       // Initialize visibility on modal open
       prevAnnotationCountRef.current = annotations.length;
 
-      if (initialFocus) {
-        focusOnAnnotation(initialFocus);
-        const focusedIdx = annotations.findIndex(
-          (ann) =>
-            ann.box_2d &&
-            initialFocus.box_2d &&
-            ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d![i]) < 0.001),
-        );
-        if (focusedIdx !== -1) {
-          setVisibleAnnotations(new Set([focusedIdx]));
-        }
-      } else {
+      if (!initialFocus) {
+        // No focus - show all annotations
         resetView();
         setVisibleAnnotations(new Set(annotations.map((_, idx) => idx)));
+        setIsFocusMode(false);
       }
     }
-  }, [isOpen, imageLoaded, initialFocus]);
+  }, [isOpen, imageLoaded, annotations.length]);
+
+  // Separate effect to handle initialFocus changes (can happen while modal is open)
+  useEffect(() => {
+    if (!isOpen || !imageLoaded) return;
+
+    if (initialFocus) {
+      focusOnAnnotation(initialFocus);
+      const focusedIdx = annotations.findIndex(
+        (ann) =>
+          ann.box_2d &&
+          initialFocus.box_2d &&
+          ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d![i]) < 0.001),
+      );
+      if (focusedIdx !== -1) {
+        setVisibleAnnotations(new Set([focusedIdx]));
+        setIsFocusMode(true);
+      }
+    } else if (isFocusMode) {
+      // initialFocus was cleared - exit focus mode
+      setVisibleAnnotations(new Set(annotations.map((_, idx) => idx)));
+      setIsFocusMode(false);
+    }
+  }, [isOpen, imageLoaded, initialFocus, annotations, isFocusMode]);
 
   // Focus on label input when editing
   useEffect(() => {
@@ -527,13 +549,11 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition-all backdrop-blur-md"
-                title={
-                  initialFocus ? 'Focused on single annotation' : 'Toggle annotation visibility'
-                }
+                title={isFocusMode ? 'Focused on single annotation' : 'Toggle annotation visibility'}
               >
                 <Eye size={18} />
                 <span className="text-sm font-medium">
-                  {initialFocus
+                  {isFocusMode
                     ? 'Focused'
                     : `Annotations (${visibleAnnotations.size}/${annotations.length})`}
                 </span>
