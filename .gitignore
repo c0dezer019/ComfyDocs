@@ -26,3 +26,4 @@ dist-ssr
 out
 .claude/settings*
 .claude/agents
+.github
