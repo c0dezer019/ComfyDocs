@@ -717,6 +717,7 @@ export default function HomePage() {
                       <DocumentationViewer
                         data={analysisResult.data}
                         workflowData={analysisResult.rawWorkflow as GraphWorkflow}
+                        rawWorkflow={analysisResult.rawWorkflow}
                         isOffline={analysisResult.data.isOffline || !localApiKey}
                         aiStatus={aiStatus}
                         onUpdateData={handleUpdateData}

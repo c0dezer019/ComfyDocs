@@ -10,3 +10,6 @@ export { ParametersGrid } from './ParametersGrid';
 export { QualityAnalysisSection } from './QualityAnalysisSection';
 export { PromptAnalysisSection } from './PromptAnalysisSection';
 export { WorkflowTopology } from './WorkflowTopology';
+
+// Enhanced components with lint integration
+export { WorkflowTopologyEnhanced } from './WorkflowTopologyEnhanced';

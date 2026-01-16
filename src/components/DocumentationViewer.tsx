@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { SceneDocumentation, QualityIssue, SceneNote, Annotation } from '@/lib/types';
 import {
   AssistantChat,
@@ -9,13 +9,17 @@ import {
   ParametersGrid,
   QualityAnalysisSection,
   PromptAnalysisSection,
-  WorkflowTopology,
+  WorkflowTopologyEnhanced,
 } from './sections';
+import { LintAnalysisSection } from './lint';
 import { GraphWorkflow } from './WorkflowGraph';
+import { WorkflowContext } from '@/hooks/useEducation';
 
 interface DocumentationViewerProps {
   data: SceneDocumentation;
   workflowData?: GraphWorkflow | undefined;
+  /** Raw workflow JSON for the linting engine */
+  rawWorkflow?: unknown | null;
   isOffline: boolean;
   aiStatus: 'idle' | 'loading' | 'complete' | 'error';
   isRefiningPrompt?: boolean;
@@ -37,6 +41,7 @@ interface DocumentationViewerProps {
 export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
   data,
   workflowData,
+  rawWorkflow,
   isOffline,
   aiStatus,
   isRefiningPrompt = false,
@@ -46,10 +51,42 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
   onAskAi,
   onFocusRegion,
 }) => {
+  // Focused node state for graph integration
+  const [focusedNodeId, setFocusedNodeId] = useState<number | null>(null);
+
   // Compute filtered issues for prompt analysis section
   const confidenceThreshold = 0; // Can be lifted to state if needed globally
   const filteredIssues =
     data.qualityAnalysis?.issues.filter((i) => (i.confidence || 100) >= confidenceThreshold) || [];
+
+  // Build workflow context for educational content
+  const workflowContext: WorkflowContext = {
+    samplerType: data.parameters?.sampler,
+    modelName: data.parameters?.model,
+    steps: data.parameters?.steps,
+    cfg: data.parameters?.cfg,
+  };
+
+  // Handle node focus from lint diagnostics
+  const handleFocusNode = useCallback((nodeId: number) => {
+    setFocusedNodeId(nodeId);
+    // Auto-scroll to workflow topology section
+    const topologySection = document.getElementById('workflow-topology-section');
+    if (topologySection) {
+      topologySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
+  // Handle focus region with annotation
+  const handleFocusRegion = useCallback((box: [number, number, number, number]) => {
+    if (onFocusRegion) {
+      onFocusRegion({
+        label: 'Highlighted Region',
+        box_2d: box,
+        style: 'box',
+      });
+    }
+  }, [onFocusRegion]);
 
   // Handler for updating backstory
   const handleUpdateBackstory = (backstory: string) => {
@@ -126,8 +163,23 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
         />
       )}
 
-      {/* 7. Workflow Topology */}
-      <WorkflowTopology workflowData={workflowData} />
+      {/* 7. Workflow Linting (Rule-based Analysis) */}
+      {rawWorkflow ? (
+        <LintAnalysisSection
+          rawWorkflow={rawWorkflow}
+          isOffline={isOffline}
+        />
+      ) : null}
+
+      {/* 8. Workflow Topology with Integrated Lint Diagnostics - Temporarily disabled for debugging */}
+      {/* <div id="workflow-topology-section">
+        <WorkflowTopologyEnhanced
+          workflowData={workflowData}
+          rawWorkflow={rawWorkflow}
+          workflowContext={workflowContext}
+          showLintPanelDefault={false}
+        />
+      </div> */}
     </div>
   );
 };
