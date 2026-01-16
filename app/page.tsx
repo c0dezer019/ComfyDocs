@@ -39,6 +39,7 @@ import {
   QualityIssue,
   SceneNote,
 } from '@/lib/types';
+import { initializeLintSystem } from '@/utils/lintBootstrap';
 
 export default function HomePage() {
   const [processingState, setProcessingState] = useState<ProcessingState>({ status: 'idle' });
@@ -76,6 +77,16 @@ export default function HomePage() {
   useEffect(() => {
     const seenLanding = localStorage.getItem('comfydocs_seen_landing') === 'true';
     setShowLanding(!seenLanding);
+  }, []);
+
+  // Initialize the lint system (rule registration + cache maintenance)
+  useEffect(() => {
+    initializeLintSystem({
+      runCacheMaintenance: true,
+      verbose: process.env.NODE_ENV === 'development',
+    }).catch((err) => {
+      console.error('[HomePage] Lint system initialization failed:', err);
+    });
   }, []);
 
   useEffect(() => {
