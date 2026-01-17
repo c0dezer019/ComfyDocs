@@ -577,6 +577,9 @@ Be specific about what you see in THIS image, not generic advice.
  * Used as fallback when API is unavailable or for instant display.
  */
 const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
+  // ============================================================================
+  // SAMPLING RULES
+  // ============================================================================
   'sampling/cfg-too-high': {
     summary: 'High CFG forces strict prompt adherence but causes oversaturation and "burnt" colors.',
     topFix: 'Lower CFG to 7-12 for balanced prompt following without artifacts.',
@@ -597,6 +600,22 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
     summary: 'High denoise replaces most of the input image, nearly creating a new image.',
     topFix: 'Use 0.5-0.75 denoise to preserve original composition.',
   },
+  'sampling/denoise-low': {
+    summary: 'Very low denoise makes minimal changes - the model barely affects the image.',
+    topFix: 'Increase denoise to 0.3+ for noticeable changes, or remove the sampler if no changes are wanted.',
+  },
+  'sampling/sampler-scheduler-mismatch': {
+    summary: 'Some sampler/scheduler combinations work poorly together, causing artifacts or slow convergence.',
+    topFix: 'Use Euler with Normal, DPM++ 2M with Karras, or UniPC with Beta for optimal results.',
+  },
+  'sampling/seed-control-mismatch': {
+    summary: 'Using fixed seed with randomization node defeats the purpose of deterministic generation.',
+    topFix: 'Remove the randomization node or use -1 seed for intentional variation.',
+  },
+
+  // ============================================================================
+  // MODEL RULES
+  // ============================================================================
   'model/vae-mismatch': {
     summary: 'Mismatched VAE architecture causes color shifts and quality degradation.',
     topFix: 'Use a VAE that matches your model (SDXL VAE for SDXL models).',
@@ -606,8 +625,92 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
     topFix: 'Add a CheckpointLoaderSimple node and load a model.',
   },
   'model/resolution-mismatch': {
-    summary: 'Resolution far from training size causes quality issues.',
+    summary: 'Resolution far from training size causes quality issues and repetition.',
     topFix: 'Use native resolution (512x512 for SD1.5, 1024x1024 for SDXL).',
+  },
+  'model/lora-strength-high': {
+    summary: 'High LoRA strength can overpower the base model, causing artifacts.',
+    topFix: 'Start with 0.7-0.8 strength and adjust based on results.',
+  },
+  'model/multiple-loras': {
+    summary: 'Many LoRAs can conflict, slowing generation and degrading quality.',
+    topFix: 'Limit to 2-3 LoRAs and lower individual strengths when combining.',
+  },
+  'model/clip-skip': {
+    summary: 'CLIP Skip affects how prompts are interpreted - wrong values for your model cause issues.',
+    topFix: 'Use CLIP Skip 1 for SD1.5, CLIP Skip 2 for anime models, 1 for SDXL.',
+  },
+  'workflow/no-sampler': {
+    summary: 'No sampler node found - the workflow cannot denoise or generate images.',
+    topFix: 'Add a KSampler or KSamplerAdvanced node to perform the generation.',
+  },
+  'workflow/sampler-disconnected': {
+    summary: 'Sampler is not connected to output - generated images won\'t be saved or displayed.',
+    topFix: 'Connect the sampler output to a VAE Decode and then to a Save/Preview node.',
+  },
+
+  // ============================================================================
+  // PROMPT RULES
+  // ============================================================================
+  'prompt/no-positive': {
+    summary: 'No positive prompt - the model has no guidance for what to generate.',
+    topFix: 'Add a CLIP Text Encode node with a description of what you want to create.',
+  },
+  'prompt/no-negative': {
+    summary: 'No negative prompt - unwanted elements may appear in the image.',
+    topFix: 'Add negatives like "blurry, low quality, deformed" to guide the model.',
+  },
+  'prompt/too-short': {
+    summary: 'Very short prompts give the model less guidance, leading to generic results.',
+    topFix: 'Add descriptive details: subject, style, lighting, composition, quality tags.',
+  },
+  'prompt/too-long': {
+    summary: 'CLIP truncates prompts beyond 77 tokens - later content may be ignored.',
+    topFix: 'Prioritize important concepts at the start, or use CLIP text encoding with multiple segments.',
+  },
+  'prompt/problematic-pattern': {
+    summary: 'Some prompt patterns (doubled words, conflicting styles) confuse the model.',
+    topFix: 'Review and clean up the prompt, removing duplicates and contradictions.',
+  },
+  'prompt/excessive-weight': {
+    summary: 'Extreme prompt weights (>1.5) cause artifacts and oversaturated results.',
+    topFix: 'Keep weights between 0.8-1.4 for natural-looking emphasis.',
+  },
+  'prompt/conditioning-disconnected': {
+    summary: 'Conditioning is created but not connected - the model won\'t receive prompt guidance.',
+    topFix: 'Connect the conditioning output to the sampler\'s positive/negative inputs.',
+  },
+
+  // ============================================================================
+  // PERFORMANCE RULES
+  // ============================================================================
+  'performance/large-batch': {
+    summary: 'Large batch sizes use excessive VRAM and can cause out-of-memory errors.',
+    topFix: 'Use batch size 1-4 for most workflows, increase only if VRAM allows.',
+  },
+  'performance/non-standard-resolution': {
+    summary: 'Resolutions not divisible by 8/64 cause padding and waste computation.',
+    topFix: 'Use resolutions divisible by 64 (e.g., 512, 768, 1024) for efficiency.',
+  },
+  'performance/very-high-resolution': {
+    summary: 'Very high resolutions require massive VRAM and may exceed model training.',
+    topFix: 'Generate at native resolution, then upscale with a dedicated upscaler.',
+  },
+  'performance/redundant-model-loads': {
+    summary: 'Loading the same model multiple times wastes VRAM unnecessarily.',
+    topFix: 'Load the model once and connect it to all nodes that need it.',
+  },
+  'performance/unused-nodes': {
+    summary: 'Nodes not connected to output still consume resources during execution.',
+    topFix: 'Remove or bypass unused nodes to speed up workflow execution.',
+  },
+  'performance/multiple-upscales': {
+    summary: 'Chaining multiple upscalers compounds artifacts and increases processing time.',
+    topFix: 'Use a single high-quality upscaler (like 4x_NMKD) for best results.',
+  },
+  'performance/inefficient-sampler': {
+    summary: 'Some samplers require more steps to converge than modern alternatives.',
+    topFix: 'Try DPM++ 2M Karras or UniPC for faster convergence with fewer steps.',
   },
 };
 
