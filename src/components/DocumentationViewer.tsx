@@ -168,18 +168,21 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
         <LintAnalysisSection
           rawWorkflow={rawWorkflow}
           isOffline={isOffline}
+          parameters={data.parameters}
+          onFocusNode={handleFocusNode}
+          onFocusRegion={handleFocusRegion}
         />
       ) : null}
 
-      {/* 8. Workflow Topology with Integrated Lint Diagnostics - Temporarily disabled for debugging */}
-      {/* <div id="workflow-topology-section">
+      {/* 8. Workflow Topology with Integrated Lint Diagnostics */}
+      <div id="workflow-topology-section">
         <WorkflowTopologyEnhanced
           workflowData={workflowData}
           rawWorkflow={rawWorkflow}
           workflowContext={workflowContext}
           showLintPanelDefault={false}
         />
-      </div> */}
+      </div>
     </div>
   );
 };
