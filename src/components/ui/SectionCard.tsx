@@ -10,7 +10,7 @@ export interface SectionCardProps {
   title: string;
   /** Small subtitle/description */
   subtitle?: string;
-  /** Tailwind color class for icon container (e.g., 'bg-indigo-500/10 text-indigo-400 ring-indigo-500/20') */
+  /** Tailwind color class for icon container (e.g., 'bg-accent-subtle text-status-info ring-accent/30') */
   iconColorClass: string;
   /** Show loading spinner instead of icon */
   isLoading?: boolean;
@@ -25,8 +25,7 @@ export interface SectionCardProps {
 }
 
 /**
- * Reusable section card component with consistent styling.
- * Provides a glass-card appearance with icon, title, subtitle, and content area.
+ * Reusable semantic panel with consistent heading and content spacing.
  */
 export const SectionCard: React.FC<SectionCardProps> = ({
   icon: Icon,
@@ -49,24 +48,28 @@ export const SectionCard: React.FC<SectionCardProps> = ({
     .join(' ');
 
   return (
-    <section className={`glass-card rounded-3xl p-8 relative group ${className}`}>
+    <section
+      className={`rounded-card border border-border bg-surface p-6 shadow-card sm:p-8 ${className}`}
+    >
       <div
-        className={`flex items-center justify-between ${showHeaderBorder ? 'mb-10 pb-6 border-b border-white/5' : 'mb-8'}`}
+        className={`flex flex-wrap items-start gap-4 ${showHeaderBorder ? 'mb-8 border-b border-border pb-6' : 'mb-6'}`}
       >
         <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-2xl ring-1 ${bgTextClasses} ${ringClass}`}>
+          <div className={`rounded-icon p-3 ring-1 ${bgTextClasses} ${ringClass}`}>
             {isLoading ? <Loader2 size={24} className="animate-spin" /> : <Icon size={24} />}
           </div>
           <div>
-            <h2 className="text-2xl font-extrabold text-white tracking-tight">{title}</h2>
-            {subtitle && (
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">
-                {subtitle}
-              </div>
-            )}
+            <h2 className="font-heading text-2xl font-semibold tracking-tight text-text">
+              {title}
+            </h2>
+            {subtitle && <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>}
           </div>
         </div>
-        {headerRight}
+        {headerRight && (
+          <div className="ml-auto max-w-full basis-full sm:basis-auto sm:shrink-0">
+            {headerRight}
+          </div>
+        )}
       </div>
       {children}
     </section>
@@ -85,11 +88,11 @@ export interface LoadingPlaceholderProps {
  */
 export const LoadingPlaceholder: React.FC<LoadingPlaceholderProps> = ({
   text,
-  spinnerColorClass = 'text-indigo-500/50',
+  spinnerColorClass = 'text-status-info',
 }) => (
-  <div className="py-12 flex flex-col items-center justify-center text-slate-500 gap-3 border border-dashed border-white/5 rounded-2xl bg-white/5 animate-pulse">
+  <div className="flex flex-col items-center justify-center gap-3 rounded-card border border-dashed border-border bg-surface-muted py-12 text-text-secondary">
     <Loader2 size={32} className={`animate-spin ${spinnerColorClass}`} />
-    <p className="text-xs font-bold uppercase tracking-widest">{text}</p>
+    <p className="text-sm font-medium">{text}</p>
   </div>
 );
 
@@ -113,11 +116,11 @@ export const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
   maxScore = 10,
   colorClass,
 }) => (
-  <div className="bg-black/40 px-5 py-2.5 rounded-2xl border border-white/5 shadow-inner flex items-center gap-4">
-    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
-    <span className={`text-xl font-black ${colorClass}`}>
+  <div className="flex items-center gap-4 rounded-card border border-border bg-surface-muted px-4 py-2.5">
+    <span className="text-sm font-medium text-text-secondary">{label}</span>
+    <span className={`text-xl font-semibold ${colorClass}`}>
       {score}
-      <span className="text-xs text-slate-600 ml-0.5">/{maxScore}</span>
+      <span className="ml-0.5 text-xs text-text-secondary">/{maxScore}</span>
     </span>
   </div>
 );

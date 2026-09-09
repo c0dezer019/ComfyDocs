@@ -1,4 +1,7 @@
 import { SceneDocumentation } from '@/lib/types';
+import { LintResult, LintConfig, LintedQualityIssue } from '@/lib/lintTypes';
+import { runLinter, lintToQualityAnalysis, DEFAULT_LINT_CONFIG } from './lintEngine';
+import { registerBuiltinRules, areRulesRegistered } from '@/rules';
 
 /**
  * Heuristic analysis of ComfyUI workflow JSON to extract parameters and prompts
@@ -273,3 +276,146 @@ export const analyzeWorkflowLocally = (workflow: Workflow): SceneDocumentation =
 
   return result;
 };
+
+// ============================================================================
+// LINTING INTEGRATION
+// ============================================================================
+
+/**
+ * Ensures lint rules are registered.
+ * Call this before running the linter.
+ */
+function ensureRulesRegistered(): void {
+  if (!areRulesRegistered()) {
+    registerBuiltinRules();
+  }
+}
+
+/**
+ * Runs the linting engine on a workflow.
+ * This is a low-level API that returns raw lint results.
+ *
+ * @param workflow - Raw ComfyUI workflow JSON
+ * @param config - Optional lint configuration
+ * @returns LintResult with all diagnostics and metadata
+ */
+export function lintWorkflow(
+  workflow: unknown,
+  config: LintConfig = DEFAULT_LINT_CONFIG
+): LintResult {
+  ensureRulesRegistered();
+  return runLinter(workflow, config);
+}
+
+/**
+ * Analyzes a workflow with both heuristic extraction AND rule-based linting.
+ * This is the recommended high-level API for comprehensive offline analysis.
+ *
+ * @param workflow - Raw ComfyUI workflow JSON
+ * @param config - Optional lint configuration
+ * @returns SceneDocumentation with quality analysis from linting
+ */
+export function analyzeWorkflowWithLinting(
+  workflow: Workflow,
+  config?: Partial<LintConfig>
+): SceneDocumentation {
+  // Run heuristic analysis first
+  const baseResult = analyzeWorkflowLocally(workflow);
+
+  // Run linting
+  ensureRulesRegistered();
+  const mergedConfig = config
+    ? { ...DEFAULT_LINT_CONFIG, ...config }
+    : DEFAULT_LINT_CONFIG;
+  const lintResult = lintToQualityAnalysis(workflow, mergedConfig);
+
+  // Merge lint results into SceneDocumentation
+  return {
+    ...baseResult,
+    qualityAnalysis: {
+      overallScore: lintResult.overallScore,
+      issues: lintResult.issues as unknown as import('@/lib/types').QualityIssue[],
+    },
+    // Add workflow analysis hints from linting
+    workflowAnalysis: generateWorkflowAnalysisHints(lintResult.issues),
+  };
+}
+
+/**
+ * Generates workflow analysis text from lint issues.
+ */
+function generateWorkflowAnalysisHints(issues: LintedQualityIssue[]): string[] {
+  const hints: string[] = [];
+
+  // Group issues by category
+  const issuesByCategory = new Map<string, LintedQualityIssue[]>();
+  for (const issue of issues) {
+    const category = issue.type || 'General';
+    const existing = issuesByCategory.get(category) || [];
+    existing.push(issue);
+    issuesByCategory.set(category, existing);
+  }
+
+  // Generate summary hints
+  for (const [category, categoryIssues] of issuesByCategory) {
+    const criticalCount = categoryIssues.filter(
+      (i) => i.severity === 'Critical'
+    ).length;
+    const majorCount = categoryIssues.filter(
+      (i) => i.severity === 'Major'
+    ).length;
+
+    if (criticalCount > 0) {
+      hints.push(
+        `${category}: ${criticalCount} critical issue(s) detected that may prevent proper generation.`
+      );
+    } else if (majorCount > 0) {
+      hints.push(
+        `${category}: ${majorCount} issue(s) found that may affect output quality.`
+      );
+    } else if (categoryIssues.length > 0) {
+      hints.push(
+        `${category}: ${categoryIssues.length} suggestion(s) for potential improvement.`
+      );
+    }
+  }
+
+  if (hints.length === 0) {
+    hints.push('No significant issues detected in workflow configuration.');
+  }
+
+  return hints;
+}
+
+/**
+ * Quick lint check that returns only error-level issues.
+ * Useful for validation before generation.
+ *
+ * @param workflow - Raw ComfyUI workflow JSON
+ * @returns Array of critical issues, empty if workflow looks valid
+ */
+export function getWorkflowErrors(workflow: unknown): LintedQualityIssue[] {
+  ensureRulesRegistered();
+
+  const result = lintToQualityAnalysis(workflow, {
+    ...DEFAULT_LINT_CONFIG,
+    includeInfo: false,
+  });
+
+  return result.issues.filter((i) => i.severity === 'Critical');
+}
+
+/**
+ * Checks if a workflow passes basic validation.
+ *
+ * @param workflow - Raw ComfyUI workflow JSON
+ * @returns True if no critical errors, false otherwise
+ */
+export function isWorkflowValid(workflow: unknown): boolean {
+  const errors = getWorkflowErrors(workflow);
+  return errors.length === 0;
+}
+
+// Re-export linting types and utilities for convenience
+export { DEFAULT_LINT_CONFIG } from './lintEngine';
+export type { LintResult, LintConfig, LintedQualityIssue } from '@/lib/lintTypes';

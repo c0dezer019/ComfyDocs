@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   ShieldCheck,
@@ -37,6 +37,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(!currentKey);
   const [showKey, setShowKey] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     setInputValue(currentKey);
@@ -46,6 +49,87 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setShowInstructions(true);
     }
   }, [currentKey, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+
+      const focusableElements = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+      const activeElement = document.activeElement;
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        dialogRef.current.focus();
+      } else if (
+        event.shiftKey &&
+        (activeElement === firstElement ||
+          activeElement === dialogRef.current ||
+          !dialogRef.current.contains(activeElement))
+      ) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (
+        !event.shiftKey &&
+        (activeElement === lastElement ||
+          activeElement === dialogRef.current ||
+          !dialogRef.current.contains(activeElement))
+      ) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Capture and move focus only for the closed-to-open transition. Keeping
+      // this out of parent-driven rerenders prevents an in-progress form edit
+      // from having focus pulled back to the dialog container.
+      if (wasOpenRef.current) return;
+      wasOpenRef.current = true;
+      returnFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      dialogRef.current?.focus();
+      return;
+    }
+
+    if (!wasOpenRef.current) return;
+
+    wasOpenRef.current = false;
+    const opener = returnFocusRef.current;
+    returnFocusRef.current = null;
+
+    // Let React finish the close render, but do not steal focus if the parent
+    // intentionally moved it while responding to the close callback.
+    const frame = window.requestAnimationFrame(() => {
+      const activeElement = document.activeElement;
+      if (
+        opener?.isConnected &&
+        (activeElement === document.body || activeElement === document.documentElement)
+      ) {
+        opener.focus();
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -103,28 +187,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 transition-opacity duration-150"
       onClick={handleBackdropClick}
       role="presentation"
     >
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
-        className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]"
+        ref={dialogRef}
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-card border border-border bg-surface shadow-preview"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="settings-modal-title"
+        tabIndex={-1}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-900/50 shrink-0">
+        <div className="flex shrink-0 items-center justify-between border-b border-border bg-surface-muted p-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+            <div className="rounded-icon bg-accent-subtle p-2 text-status-info">
               <Lock size={20} />
             </div>
-            <h2 className="text-xl font-semibold text-white">Secure Configuration</h2>
+            <h2 id="settings-modal-title" className="font-heading text-xl font-semibold text-text">
+              Secure Configuration
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-800"
+            className="rounded-button p-1 text-text-secondary transition-colors hover:bg-surface hover:text-text"
+            aria-label="Close secure configuration"
           >
             <X size={20} />
           </button>
@@ -133,16 +223,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Scrollable Content */}
         <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
           <div className="space-y-4">
-            <div className="bg-indigo-900/20 border border-indigo-900/50 rounded-lg p-4 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-indigo-400 mt-0.5 shrink-0" />
-              <div className="text-sm text-indigo-200">
+            <div className="flex items-start gap-3 rounded-card border border-sky-200 bg-sky-50 p-4">
+              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-status-info" />
+              <div className="text-sm text-text-secondary">
                 <p className="font-semibold mb-1">Encrypted Local Storage (BYOK)</p>
                 <p className="opacity-80 leading-relaxed text-xs">
                   Your key is encrypted with your password and stored locally in your browser.
                   <br />
                   <br />
-                  <span className="text-indigo-300 font-bold">Warning:</span> You will need to enter
-                  this password whenever you revisit the app to unlock your key.
+                  <span className="font-bold text-status-info">Warning:</span> You will need to
+                  enter this password whenever you revisit the app to unlock your key.
                 </p>
               </div>
             </div>
@@ -152,7 +242,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div>
                 <label
                   htmlFor="gemini-api-key"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="mb-2 block text-sm font-medium text-text"
                 >
                   Google Gemini API Key
                 </label>
@@ -166,14 +256,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setError(null);
                     }}
                     placeholder="AIzaSy..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-4 pr-12 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all font-mono text-sm shadow-inner"
+                    className="w-full rounded-input border border-border bg-surface py-2.5 pl-4 pr-12 font-mono text-sm text-text shadow-subtle outline-none transition-colors focus:border-accent"
                   />
                   <button
                     type="button"
                     onClick={() => setShowKey(!showKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-button p-1 text-text-secondary transition-colors hover:text-text"
                     aria-label={showKey ? 'Hide API key' : 'Show API key'}
-                    tabIndex={-1}
                   >
                     {showKey ? (
                       <EyeOff size={16} aria-hidden="true" />
@@ -189,7 +278,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div>
                   <label
                     htmlFor="create-password"
-                    className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider"
+                    className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-text-secondary"
                   >
                     Create Password
                   </label>
@@ -202,13 +291,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       if (error) setError(null);
                     }}
                     placeholder="Min 8 chars..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 px-4 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-indigo-500/50 outline-none text-sm shadow-inner"
+                    className="w-full rounded-input border border-border bg-surface px-4 py-2.5 text-sm text-text shadow-subtle outline-none transition-colors focus:border-accent"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="confirm-password"
-                    className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider"
+                    className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-text-secondary"
                   >
                     Confirm
                   </label>
@@ -221,34 +310,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       if (error) setError(null);
                     }}
                     placeholder="Repeat..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 px-4 text-white placeholder:text-slate-600 focus:ring-1 focus:ring-indigo-500/50 outline-none text-sm shadow-inner"
+                    className="w-full rounded-input border border-border bg-surface px-4 py-2.5 text-sm text-text shadow-subtle outline-none transition-colors focus:border-accent"
                   />
                 </div>
               </div>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 mt-2 text-red-400 text-xs animate-in slide-in-from-top-1">
+              <div className="mt-2 flex items-center gap-2 text-xs text-status-error" role="alert">
                 <AlertCircle size={12} />
                 <span>{error}</span>
               </div>
             )}
 
             {/* Instructions Accordion */}
-            <div className="border border-slate-800 rounded-lg overflow-hidden bg-slate-900/30">
+            <div className="overflow-hidden rounded-input border border-border bg-surface-muted">
               <button
                 onClick={() => setShowInstructions(!showInstructions)}
-                className="w-full flex items-center justify-between p-3 bg-slate-800/50 hover:bg-slate-800 text-sm font-medium text-slate-300 transition-colors"
+                className="flex w-full items-center justify-between bg-surface-muted p-3 text-sm font-medium text-text transition-colors hover:bg-surface"
               >
                 <span className="flex items-center gap-2">
-                  <Info size={16} className="text-indigo-400" />
+                  <Info size={16} className="text-status-info" />
                   How to get an API Key
                 </span>
                 {showInstructions ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
 
               {showInstructions && (
-                <div className="p-4 text-sm text-slate-400 space-y-3 border-t border-slate-800 animate-in slide-in-from-top-2 duration-200">
+                <div className="space-y-3 border-t border-border p-4 text-sm text-text-secondary">
                   <ol className="list-decimal list-inside space-y-3 ml-1">
                     <li>
                       Access the{' '}
@@ -256,7 +345,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         href="https://aistudio.google.com/app/apikey"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-indigo-400 hover:text-indigo-300 hover:underline inline-flex items-center gap-0.5"
+                        className="inline-flex items-center gap-0.5 text-status-info hover:underline"
                       >
                         Google AI Studio <ExternalLink size={10} />
                       </a>{' '}
@@ -271,7 +360,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           href="https://ai.google.dev/gemini-api/docs/billing"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded text-xs transition-colors border border-slate-700"
+                          className="inline-flex items-center gap-1.5 rounded-button border border-border bg-surface px-3 py-1.5 text-xs text-status-info transition-colors hover:border-accent"
                         >
                           <CreditCard size={12} />
                           Billing Docs
@@ -289,11 +378,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-between items-center shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border bg-surface-muted p-4 sm:justify-between sm:p-6">
           {currentKey ? (
             <button
               onClick={handleClear}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors"
+              className="flex items-center gap-2 rounded-button px-4 py-2 text-sm font-medium text-status-error transition-colors hover:bg-red-50"
             >
               <Trash2 size={16} />
               Reset Key
@@ -305,13 +394,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="rounded-button px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface hover:text-text"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+              className="flex items-center gap-2 rounded-button bg-accent px-4 py-2 text-sm font-medium text-text shadow-subtle transition-colors hover:bg-accent-hover"
             >
               <Check size={16} />
               Encrypt & Save

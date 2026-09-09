@@ -20,14 +20,14 @@ export const WorkflowTopology: React.FC<WorkflowTopologyProps> = ({ workflowData
       icon={Zap}
       title="Workflow Topology"
       subtitle="Interactive node reconstruction"
-      iconColorClass="bg-emerald-500/10 text-emerald-400 ring-emerald-500/20"
+      iconColorClass="bg-accent-subtle text-accent ring-accent/30"
       showHeaderBorder
     >
-      <div className="rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-2xl">
+      <div className="overflow-hidden rounded-card border border-border shadow-card">
         {workflowData ? (
           <WorkflowGraph workflow={workflowData} />
         ) : (
-          <div className="p-20 text-center text-slate-500 font-bold uppercase tracking-widest bg-black/20">
+          <div className="bg-surface-muted p-20 text-center text-text-secondary font-semibold uppercase tracking-widest">
             Topology data missing
           </div>
         )}

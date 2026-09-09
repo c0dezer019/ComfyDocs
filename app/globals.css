@@ -1,117 +1,90 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+@import '../variables.css';
+@import '../theme.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@layer base {
+  :root {
+    color-scheme: light;
+  }
 
-:root {
-  --brand-primary: #6366f1;
-  --brand-secondary: #a855f7;
-}
+  html {
+    background: var(--color-page);
+  }
 
-body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: #020617;
-  color: #f8fafc;
-  min-height: 100vh;
-  background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 50%),
-    radial-gradient(at 50% 0%, rgba(168, 85, 247, 0.05) 0, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(30, 64, 175, 0.08) 0, transparent 50%);
-  background-attachment: fixed;
-}
+  body {
+    min-height: 100vh;
+    background: var(--color-page);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.5;
+  }
 
-code,
-pre {
-  font-family: 'JetBrains Mono', monospace;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-text);
+    font-family: var(--font-heading);
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.025em;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  input,
+  select,
+  textarea {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  ::selection {
+    background: var(--color-accent-subtle);
+    color: var(--color-text);
+  }
+
+  /* Keep keyboard focus visible even when a component uses outline-none. */
+  *:focus-visible {
+    outline: 2px solid var(--color-focus) !important;
+    outline-offset: 2px !important;
+  }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--color-page);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
-  border-radius: 10px;
+  background: var(--color-border-muted);
+  border: 2px solid var(--color-page);
+  border-radius: var(--radius-full);
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.5);
-}
-
-@layer components {
-  .glass {
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .glass-card {
-    background: rgba(30, 41, 59, 0.3);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .glass-card:hover {
-    border-color: rgba(99, 102, 241, 0.2);
-    background: rgba(30, 41, 59, 0.4);
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  }
-
-  .text-gradient {
-    background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-}
-
-/* Print Styles for PDF Export */
-@media print {
-  body {
-    background: white;
-    color: black;
-    background-image: none;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  /* Use visibility to hide everything by default, then show print-only.
-     This avoids 'display: none' breaking layout flow for portals or root. */
-  body * {
-    visibility: hidden;
-  }
-
-  /* Show the specific print container */
-  .print-only,
-  .print-only * {
-    visibility: visible;
-  }
-
-  .print-only {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    background: white;
-    color: black;
-    z-index: 9999;
-  }
-
-  .page-break {
-    page-break-before: always;
-  }
-
-  .avoid-break {
-    page-break-inside: avoid;
-  }
+  background: var(--color-text-muted);
 }
 
 /* Screen Reader Only Utility */
@@ -139,25 +112,57 @@ pre {
   white-space: normal;
 }
 
-/* Enhanced Focus Indicators */
-*:focus-visible {
-  outline: 2px solid theme('colors.indigo.500');
-  outline-offset: 2px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-button:focus-visible {
-  outline: 2px solid theme('colors.indigo.500');
-  outline-offset: 2px;
-}
+/* Print Styles for PDF Export */
+@media print {
+  body {
+    min-height: 0;
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
 
-a:focus-visible {
-  outline: 2px solid theme('colors.indigo.500');
-  outline-offset: 2px;
-}
+  .no-print {
+    display: none !important;
+  }
 
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 2px solid theme('colors.indigo.500');
-  outline-offset: 0;
+  /* Use visibility to hide everything by default, then show print-only.
+     This avoids 'display: none' breaking layout flow for portals or root. */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show the specific print container */
+  .print-only,
+  .print-only * {
+    visibility: visible;
+  }
+
+  .print-only {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    width: 100%;
+    margin: 0;
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
 }

@@ -90,6 +90,8 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Check if editing is enabled
   const canEdit = onAnnotationUpdate || onAnnotationDelete || onAnnotationCreate;
@@ -246,12 +248,57 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
         // Otherwise close the modal
         onClose();
+        return;
+      }
+
+      if (e.key !== 'Tab' || !modalRef.current) return;
+
+      const focusableElements = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+      const activeElement = document.activeElement;
+
+      if (!firstElement || !lastElement) {
+        e.preventDefault();
+        modalRef.current.focus();
+      } else if (
+        e.shiftKey &&
+        (activeElement === firstElement ||
+          activeElement === modalRef.current ||
+          !modalRef.current.contains(activeElement))
+      ) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (
+        !e.shiftKey &&
+        (activeElement === lastElement ||
+          activeElement === modalRef.current ||
+          !modalRef.current.contains(activeElement))
+      ) {
+        e.preventDefault();
+        firstElement.focus();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, editMode, editingLabelIdx, selectedAnnotationIdx, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      returnFocusRef.current?.focus();
+      return;
+    }
+
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => containerRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen]);
 
   // Keyboard navigation for panning (global)
   useEffect(() => {
@@ -567,564 +614,577 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     isCreating && createStart && createEnd ? calculateCreationBox(createStart, createEnd) : null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-300 overflow-hidden">
-      {/* Header / Controls */}
-      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-20 pointer-events-none">
-        <div className="flex gap-2 items-start flex-wrap">
-          {/* Zoom Controls */}
-          <div className="flex gap-2 pointer-events-auto bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 backdrop-blur-md">
-            <button
-              onClick={() => setScale((s) => Math.min(s + 1, 20))}
-              className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              aria-label="Zoom in"
-            >
-              <ZoomIn size={20} aria-hidden="true" />
-            </button>
-            <button
-              onClick={() => setScale((s) => Math.max(s - 1, 0.5))}
-              className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              aria-label="Zoom out"
-            >
-              <ZoomOut size={20} aria-hidden="true" />
-            </button>
-            <button
-              onClick={resetView}
-              className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              aria-label="Reset view to original position and zoom"
-            >
-              <RotateCcw size={20} aria-hidden="true" />
-            </button>
-          </div>
-
-          {/* Edit Controls */}
-          {canEdit && (
-            <div className="flex gap-2 pointer-events-auto bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 backdrop-blur-md">
-              <button
-                onClick={() => {
-                  resetEditState();
-                  setEditMode(editMode === 'create' ? 'none' : 'create');
-                }}
-                className={`p-2 rounded-lg transition-colors ${
-                  editMode === 'create'
-                    ? 'bg-emerald-600 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                }`}
-                aria-label={
-                  editMode === 'create' ? 'Cancel creating annotation' : 'Create new annotation'
-                }
-                aria-pressed={editMode === 'create'}
-              >
-                <Plus size={20} aria-hidden="true" />
-              </button>
-            </div>
-          )}
-
-          {/* Annotations Dropdown */}
-          {annotations.length > 0 && (
-            <div className="pointer-events-auto relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition-all backdrop-blur-md"
-                aria-label={
-                  isFocusMode
-                    ? 'Focused on single annotation. Click to view all annotations.'
-                    : `Toggle annotation visibility menu. ${visibleAnnotations.size} of ${annotations.length} annotations visible.`
-                }
-                aria-expanded={isDropdownOpen}
-                aria-haspopup="true"
-              >
-                <Eye size={18} aria-hidden="true" />
-                <span className="text-sm font-medium">
-                  {isFocusMode
-                    ? 'Focused'
-                    : `Annotations (${visibleAnnotations.size}/${annotations.length})`}
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute top-full mt-2 left-0 w-80 bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-xl shadow-2xl overflow-hidden">
-                  {/* Toggle All Button */}
-                  <button
-                    onClick={toggleAllAnnotations}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors border-b border-slate-800"
-                    aria-label={
-                      visibleAnnotations.size === annotations.length
-                        ? `Hide all ${annotations.length} annotations`
-                        : `Show all ${annotations.length} annotations`
-                    }
-                  >
-                    {visibleAnnotations.size === annotations.length ? (
-                      <>
-                        <EyeOff size={16} aria-hidden="true" />
-                        <span>Hide All</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye size={16} aria-hidden="true" />
-                        <span>Show All</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Individual Annotations */}
-                  <div className="max-h-96 overflow-y-auto">
-                    {annotations.map((ann, idx) => {
-                      const isVisible = visibleAnnotations.has(idx);
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-2 px-4 py-3 text-sm text-slate-300 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50 last:border-b-0"
-                        >
-                          <button
-                            onClick={() => toggleAnnotation(idx)}
-                            className="flex items-center gap-3 flex-1"
-                            aria-label={`${isVisible ? 'Hide' : 'Show'} annotation ${idx + 1}: ${ann.label}`}
-                            aria-pressed={isVisible}
-                          >
-                            {isVisible ? (
-                              <Eye
-                                size={16}
-                                className="text-indigo-400 flex-shrink-0"
-                                aria-hidden="true"
-                              />
-                            ) : (
-                              <EyeOff
-                                size={16}
-                                className="text-slate-600 flex-shrink-0"
-                                aria-hidden="true"
-                              />
-                            )}
-                            <span
-                              className={`font-mono text-xs flex-1 text-left truncate ${isVisible ? 'text-white' : 'text-slate-500'}`}
-                            >
-                              {ann.label}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              #{idx + 1}
-                            </span>
-                          </button>
-                          {canEdit && (
-                            <button
-                              onClick={() => handleDeleteAnnotation(idx)}
-                              className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
-                              aria-label={`Delete annotation ${idx + 1}: ${ann.label}`}
-                            >
-                              <Trash2 size={14} aria-hidden="true" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Edit Mode Indicator - shows when annotation selected or in edit mode */}
-          {(editMode !== 'none' || selectedAnnotationIdx !== null) && (
-            <div className="pointer-events-auto px-4 py-2 bg-emerald-600/90 text-white rounded-xl text-sm font-medium flex items-center gap-2">
-              {editMode === 'create' && (
-                <>
-                  <Plus size={16} /> Click and drag to create
-                </>
-              )}
-              {editMode === 'move' && (
-                <>
-                  <Move size={16} /> Drag to move
-                </>
-              )}
-              {editMode === 'rotate' && (
-                <>
-                  <RotateCw size={16} /> Drag to rotate label
-                </>
-              )}
-              {editMode === 'none' && selectedAnnotationIdx !== null && (
-                <>
-                  <Edit3 size={16} /> Annotation selected (Esc to deselect)
-                </>
-              )}
-              <button
-                onClick={() => {
-                  resetEditState();
-                  setSelectedAnnotationIdx(null);
-                }}
-                className="ml-2 p-1 hover:bg-white/20 rounded"
-                title="Cancel (Esc)"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={onClose}
-          className="pointer-events-auto p-3 bg-slate-900/80 hover:bg-rose-600 border border-slate-800 text-slate-300 hover:text-white rounded-xl transition-all"
-          aria-label="Close image preview modal"
-        >
-          <X size={24} aria-hidden="true" />
-        </button>
-      </div>
-
-      {/* Image Container */}
-      {}
-      <div // eslint-disable-line jsx-a11y/no-noninteractive-element-interactions
-        ref={containerRef}
-        className={`flex-1 w-full h-full overflow-hidden flex items-center justify-center select-none ${
-          editMode === 'create'
-            ? 'cursor-crosshair'
-            : editMode === 'move'
-              ? 'cursor-move'
-              : editMode === 'rotate'
-                ? 'cursor-grabbing'
-                : 'cursor-grab active:cursor-grabbing'
-        }`}
-        role="application"
-        aria-label="Zoomable and pannable image viewer. Use arrow keys to pan, +/- to zoom, 0 to reset."
-        tabIndex={0} // eslint-disable-line jsx-a11y/no-noninteractive-tabindex
-        onKeyDown={handleContainerKeyDown}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 transition-opacity duration-150">
+      <div
+        ref={modalRef}
+        className="relative flex h-[calc(100vh-2rem)] w-full max-w-7xl flex-col overflow-hidden rounded-card border border-border bg-surface shadow-preview"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Image preview"
+        tabIndex={-1}
       >
-        <div
-          style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transition:
-              isDragging || isCreating || editMode === 'rotate' || editMode === 'move'
-                ? 'none'
-                : 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)',
-            transformOrigin: 'center center',
-          }}
-          className="relative flex items-center justify-center transition-transform"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imageRef}
-            src={imageSrc}
-            onLoad={handleImageLoad}
-            alt="Forensic View"
-            className="max-w-none max-h-[85vh] shadow-2xl rounded-sm border border-white/5"
-            draggable={false}
-          />
-
-          {/* Overlay Annotations */}
-          {imageLoaded && imgDims.w > 0 && (
-            <svg
-              className="absolute inset-0 w-full h-full overflow-visible"
-              viewBox={`0 0 ${imgDims.w} ${imgDims.h}`}
-              style={{ pointerEvents: canEdit ? 'auto' : 'none' }}
-            >
-              {/* Creation Preview */}
-              {creationBox && (
-                <rect
-                  x={creationBox.xmin * imgDims.w}
-                  y={creationBox.ymin * imgDims.h}
-                  width={(creationBox.xmax - creationBox.xmin) * imgDims.w}
-                  height={(creationBox.ymax - creationBox.ymin) * imgDims.h}
-                  fill="rgba(16, 185, 129, 0.2)"
-                  stroke="#10b981"
-                  strokeWidth="2"
-                  strokeDasharray="8 4"
-                  vectorEffect="non-scaling-stroke"
-                />
-              )}
-
-              {activeAnnotations.map((ann, idx) => {
-                if (!ann.box_2d) return null;
-
-                // Find the real index in the full annotations array
-                const realIdx = annotations.findIndex(
-                  (a) => a.box_2d && ann.box_2d && a.box_2d.every((v, i) => v === ann.box_2d[i]),
-                );
-
-                const [ymin, xmin, ymax, xmax] = ann.box_2d;
-                const width = (xmax - xmin) * imgDims.w;
-                const height = (ymax - ymin) * imgDims.h;
-                const x = xmin * imgDims.w;
-                const y = ymin * imgDims.h;
-
-                const isFocused = Boolean(
-                  initialFocus &&
-                  initialFocus.box_2d &&
-                  ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d[i]) < 0.001),
-                );
-
-                const isSelected = selectedAnnotationIdx === realIdx;
-                const isHovered = hoveredAnnotationIdx === realIdx && !isSelected;
-
-                // Color priority: selected (green) > hovered (cyan) > focused (rose) > default (indigo)
-                const color = getAnnotationColor(isSelected, isHovered, !!isFocused);
-
-                // Calculate leader line positioning
-                const isRightSide = (xmin + xmax) / 2 > 0.5;
-                const { originX, originY, destX, destY, shoulderEndX, textX, dirX, dirY } =
-                  calculateLeaderLinePoints(ann.box_2d, imgDims, ann.labelRotation, isRightSide);
-
-                // Box center and half-dimensions (needed for rotate handle)
-                const cx = x + width / 2;
-                const cy = y + height / 2;
-                const hw = width / 2;
-                const hh = height / 2;
-
-                return (
-                  <g
-                    key={idx}
-                    className="annotation-group"
-                    style={{ pointerEvents: 'auto' }}
-                    onMouseEnter={() => canEdit && setHoveredAnnotationIdx(realIdx)}
-                    onMouseLeave={() => setHoveredAnnotationIdx(null)}
-                  >
-                    {/* Bounding Box */}
-                    <rect
-                      x={x}
-                      y={y}
-                      width={width}
-                      height={height}
-                      fill={
-                        isSelected
-                          ? 'rgba(16, 185, 129, 0.1)'
-                          : isHovered
-                            ? 'rgba(34, 211, 216, 0.08)'
-                            : 'none'
-                      }
-                      stroke={color}
-                      strokeWidth={getStrokeWidth(isSelected, isHovered)}
-                      vectorEffect="non-scaling-stroke"
-                      style={{ cursor: canEdit ? 'pointer' : 'default' }}
-                      className={`annotation-control ${isFocused ? 'animate-pulse' : ''}`}
-                      onClick={(e) => handleAnnotationClick(e, realIdx)}
-                    />
-
-                    {/* Leader Line (no transform - positions are pre-calculated with rotation) */}
-                    <path
-                      d={`M ${originX} ${originY} L ${destX} ${destY} L ${shoulderEndX} ${destY}`}
-                      stroke={color}
-                      strokeWidth="1.5"
-                      fill="none"
-                      vectorEffect="non-scaling-stroke"
-                    />
-
-                    {/* Label Text (always horizontal for readability) */}
-                    {editingLabelIdx === realIdx ? (
-                      <foreignObject
-                        x={isRightSide ? textX - 200 : textX}
-                        y={destY - 15}
-                        width="200"
-                        height="30"
-                      >
-                        <input
-                          ref={labelInputRef}
-                          type="text"
-                          value={editingLabelText}
-                          onChange={(e) => setEditingLabelText(e.target.value)}
-                          onBlur={saveLabel}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveLabel();
-                            if (e.key === 'Escape') {
-                              setEditingLabelIdx(null);
-                              setEditingLabelText('');
-                            }
-                          }}
-                          className="w-full h-full bg-slate-900 border border-indigo-500 rounded px-2 text-white text-xs font-mono outline-none"
-                          style={{ fontSize: Math.max(imgDims.w, imgDims.h) * 0.015 }}
-                        />
-                      </foreignObject>
-                    ) : (
-                      <text
-                        x={textX}
-                        y={destY}
-                        fill={color}
-                        fontSize={Math.max(imgDims.w, imgDims.h) * 0.02}
-                        fontWeight="700"
-                        textAnchor={isRightSide ? 'end' : 'start'}
-                        alignmentBaseline="middle"
-                        style={{
-                          textShadow: '0px 2px 4px rgba(0,0,0,0.9)',
-                          fontFamily: 'monospace',
-                          cursor: canEdit ? 'pointer' : 'default',
-                        }}
-                        className="annotation-control"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (canEdit) startEditLabel(realIdx);
-                        }}
-                      >
-                        {ann.label.toUpperCase()}
-                      </text>
-                    )}
-
-                    {/* Edit Controls (when selected) */}
-                    {isSelected && canEdit && (
-                      <g className="annotation-control">
-                        {/* Move Handle */}
-                        <g
-                          transform={`translate(${x + width / 2}, ${y + height / 2})`}
-                          style={{ cursor: 'move' }}
-                          onMouseDown={(e) => startMove(e, realIdx)}
-                          className="move-handle"
-                        >
-                          <circle
-                            r={Math.max(imgDims.w, imgDims.h) * 0.018}
-                            fill="#10b981"
-                            className="transition-all hover:fill-emerald-400"
-                            style={{ filter: 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.5))' }}
-                          />
-                          <foreignObject
-                            x={-10}
-                            y={-10}
-                            width="20"
-                            height="20"
-                            style={{ pointerEvents: 'none' }}
-                          >
-                            <div className="flex items-center justify-center w-full h-full">
-                              <Move size={12} color="white" />
-                            </div>
-                          </foreignObject>
-                        </g>
-
-                        {/* Rotate Handle - positioned along the leader line */}
-                        {(() => {
-                          const handleRadius = Math.max(imgDims.w, imgDims.h) * 0.04;
-                          // Handle is along the leader line direction, at handleRadius from origin
-                          const handleX = originX + dirX * handleRadius;
-                          const handleY = originY + dirY * handleRadius;
-
-                          return (
-                            <g className="rotate-handle">
-                              {/* Arc around box center showing rotation path */}
-                              <circle
-                                cx={cx}
-                                cy={cy}
-                                r={Math.max(hw, hh) + handleRadius * 0.5}
-                                fill="none"
-                                stroke="#6366f1"
-                                strokeWidth="1"
-                                strokeDasharray="4 4"
-                                opacity={0.3}
-                                vectorEffect="non-scaling-stroke"
-                                style={{ pointerEvents: 'none' }}
-                              />
-                              {/* Connection line from origin to handle */}
-                              <line
-                                x1={originX}
-                                y1={originY}
-                                x2={handleX}
-                                y2={handleY}
-                                stroke="#6366f1"
-                                strokeWidth="2"
-                                vectorEffect="non-scaling-stroke"
-                                style={{ pointerEvents: 'none' }}
-                              />
-                              {/* Clickable handle circle */}
-                              <circle
-                                cx={handleX}
-                                cy={handleY}
-                                r={Math.max(imgDims.w, imgDims.h) * 0.022}
-                                fill="#6366f1"
-                                style={{
-                                  cursor: 'grab',
-                                  filter: 'drop-shadow(0 0 6px rgba(99, 102, 241, 0.7))',
-                                }}
-                                className="annotation-control"
-                                onMouseDown={(e) => startRotate(e, realIdx)}
-                              />
-                              {/* Icon (visual only) */}
-                              <foreignObject
-                                x={handleX - 10}
-                                y={handleY - 10}
-                                width="20"
-                                height="20"
-                                style={{ pointerEvents: 'none' }}
-                              >
-                                <div className="flex items-center justify-center w-full h-full">
-                                  <RotateCw size={12} color="white" />
-                                </div>
-                              </foreignObject>
-                            </g>
-                          );
-                        })()}
-
-                        {/* Delete Button */}
-                        <g
-                          transform={`translate(${x + width}, ${y})`}
-                          style={{ cursor: 'pointer' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteAnnotation(realIdx);
-                          }}
-                        >
-                          <circle r={Math.max(imgDims.w, imgDims.h) * 0.012} fill="#ef4444" />
-                          <foreignObject
-                            x={-8}
-                            y={-8}
-                            width="16"
-                            height="16"
-                            style={{ pointerEvents: 'none' }}
-                          >
-                            <div className="flex items-center justify-center w-full h-full">
-                              <Trash2 size={10} color="white" />
-                            </div>
-                          </foreignObject>
-                        </g>
-
-                        {/* Edit Label Button */}
-                        <g
-                          transform={`translate(${x}, ${y})`}
-                          style={{ cursor: 'pointer' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditLabel(realIdx);
-                          }}
-                        >
-                          <circle r={Math.max(imgDims.w, imgDims.h) * 0.012} fill="#8b5cf6" />
-                          <foreignObject
-                            x={-8}
-                            y={-8}
-                            width="16"
-                            height="16"
-                            style={{ pointerEvents: 'none' }}
-                          >
-                            <div className="flex items-center justify-center w-full h-full">
-                              <Edit3 size={10} color="white" />
-                            </div>
-                          </foreignObject>
-                        </g>
-                      </g>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          )}
-        </div>
-      </div>
-
-      {/* Footer Info */}
-      <div className="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-none">
-        <div className="bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border border-slate-800 shadow-2xl flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-white">Scroll</span> Zoom
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-white">Drag</span> Pan
-          </div>
-          <div className="flex items-center gap-2 text-indigo-400 font-black">
-            {scale.toFixed(1)}x MAGNIFICATION
-          </div>
-          {canEdit && (
-            <div className="flex items-center gap-2 text-emerald-400 font-black">
-              <Edit3 size={12} /> EDIT MODE
+        {/* Header / Controls */}
+        <div className="pointer-events-none absolute top-0 right-0 left-0 z-20 flex items-start justify-between gap-2 p-3 sm:p-6">
+          <div className="flex min-w-0 max-w-[calc(100%-3.5rem)] flex-wrap items-start gap-2">
+            {/* Zoom Controls */}
+            <div className="pointer-events-auto flex gap-2 rounded-card border border-border bg-surface p-1.5 shadow-subtle">
+              <button
+                onClick={() => setScale((s) => Math.min(s + 1, 20))}
+                className="rounded-button p-2 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text"
+                aria-label="Zoom in"
+              >
+                <ZoomIn size={20} aria-hidden="true" />
+              </button>
+              <button
+                onClick={() => setScale((s) => Math.max(s - 1, 0.5))}
+                className="rounded-button p-2 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text"
+                aria-label="Zoom out"
+              >
+                <ZoomOut size={20} aria-hidden="true" />
+              </button>
+              <button
+                onClick={resetView}
+                className="rounded-button p-2 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text"
+                aria-label="Reset view to original position and zoom"
+              >
+                <RotateCcw size={20} aria-hidden="true" />
+              </button>
             </div>
-          )}
+
+            {/* Edit Controls */}
+            {canEdit && (
+              <div className="pointer-events-auto flex gap-2 rounded-card border border-border bg-surface p-1.5 shadow-subtle">
+                <button
+                  onClick={() => {
+                    resetEditState();
+                    setEditMode(editMode === 'create' ? 'none' : 'create');
+                  }}
+                  className={`rounded-button p-2 transition-colors ${
+                    editMode === 'create'
+                      ? 'bg-status-success text-white'
+                      : 'text-text-secondary hover:bg-surface-muted hover:text-text'
+                  }`}
+                  aria-label={
+                    editMode === 'create' ? 'Cancel creating annotation' : 'Create new annotation'
+                  }
+                  aria-pressed={editMode === 'create'}
+                >
+                  <Plus size={20} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+
+            {/* Annotations Dropdown */}
+            {annotations.length > 0 && (
+              <div className="contents sm:relative sm:block">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="pointer-events-auto flex items-center gap-2 rounded-button border border-border bg-surface px-3 py-2 text-text-secondary shadow-subtle transition-colors hover:bg-surface-muted hover:text-text"
+                  aria-label={
+                    isFocusMode
+                      ? 'Focused on single annotation. Click to view all annotations.'
+                      : `Toggle annotation visibility menu. ${visibleAnnotations.size} of ${annotations.length} annotations visible.`
+                  }
+                  aria-expanded={isDropdownOpen}
+                  aria-haspopup="true"
+                >
+                  <Eye size={18} aria-hidden="true" />
+                  <span className="text-sm font-medium">
+                    {isFocusMode
+                      ? 'Focused'
+                      : `Annotations (${visibleAnnotations.size}/${annotations.length})`}
+                  </span>
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="pointer-events-auto absolute top-full right-3 left-3 mt-2 flex max-h-[calc(100dvh-10rem)] flex-col overflow-hidden rounded-card border border-border bg-surface shadow-preview sm:right-auto sm:left-0 sm:max-h-96 sm:w-80">
+                    {/* Toggle All Button */}
+                    <button
+                      onClick={toggleAllAnnotations}
+                      className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-muted hover:text-text"
+                      aria-label={
+                        visibleAnnotations.size === annotations.length
+                          ? `Hide all ${annotations.length} annotations`
+                          : `Show all ${annotations.length} annotations`
+                      }
+                    >
+                      {visibleAnnotations.size === annotations.length ? (
+                        <>
+                          <EyeOff size={16} aria-hidden="true" />
+                          <span>Hide All</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye size={16} aria-hidden="true" />
+                          <span>Show All</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Individual Annotations */}
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                      {annotations.map((ann, idx) => {
+                        const isVisible = visibleAnnotations.has(idx);
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm text-text-secondary transition-colors last:border-b-0 hover:bg-surface-muted"
+                          >
+                            <button
+                              onClick={() => toggleAnnotation(idx)}
+                              className="flex items-center gap-3 flex-1"
+                              aria-label={`${isVisible ? 'Hide' : 'Show'} annotation ${idx + 1}: ${ann.label}`}
+                              aria-pressed={isVisible}
+                            >
+                              {isVisible ? (
+                                <Eye
+                                  size={16}
+                                  className="shrink-0 text-status-info"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <EyeOff
+                                  size={16}
+                                  className="shrink-0 text-text-muted"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <span
+                                className={`flex-1 truncate text-left font-mono text-xs ${isVisible ? 'text-text' : 'text-text-muted'}`}
+                              >
+                                {ann.label}
+                              </span>
+                              <span className="text-[10px] font-medium text-text-secondary">
+                                #{idx + 1}
+                              </span>
+                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => handleDeleteAnnotation(idx)}
+                                className="rounded-button p-1 text-text-secondary transition-colors hover:bg-red-50 hover:text-status-error"
+                                aria-label={`Delete annotation ${idx + 1}: ${ann.label}`}
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Edit Mode Indicator - shows when annotation selected or in edit mode */}
+            {(editMode !== 'none' || selectedAnnotationIdx !== null) && (
+              <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-button border border-status-success/20 bg-status-success/10 px-3 py-2 text-xs font-medium text-status-success sm:px-4 sm:text-sm">
+                {editMode === 'create' && (
+                  <>
+                    <Plus size={16} /> Click and drag to create
+                  </>
+                )}
+                {editMode === 'move' && (
+                  <>
+                    <Move size={16} /> Drag to move
+                  </>
+                )}
+                {editMode === 'rotate' && (
+                  <>
+                    <RotateCw size={16} /> Drag to rotate label
+                  </>
+                )}
+                {editMode === 'none' && selectedAnnotationIdx !== null && (
+                  <>
+                    <Edit3 size={16} /> Annotation selected (Esc to deselect)
+                  </>
+                )}
+                <button
+                  onClick={() => {
+                    resetEditState();
+                    setSelectedAnnotationIdx(null);
+                  }}
+                  className="ml-2 rounded-button p-1 transition-colors hover:bg-surface"
+                  title="Cancel (Esc)"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="pointer-events-auto rounded-button border border-border bg-surface p-3 text-text-secondary shadow-subtle transition-colors hover:bg-red-50 hover:text-status-error"
+            aria-label="Close image preview modal"
+          >
+            <X size={24} aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Image Container */}
+        {}
+        <div // eslint-disable-line jsx-a11y/no-noninteractive-element-interactions
+          ref={containerRef}
+          className={`flex h-full w-full flex-1 select-none items-center justify-center overflow-hidden bg-surface-muted ${
+            editMode === 'create'
+              ? 'cursor-crosshair'
+              : editMode === 'move'
+                ? 'cursor-move'
+                : editMode === 'rotate'
+                  ? 'cursor-grabbing'
+                  : 'cursor-grab active:cursor-grabbing'
+          }`}
+          role="application"
+          aria-label="Zoomable and pannable image viewer. Use arrow keys to pan, +/- to zoom, 0 to reset."
+          tabIndex={0} // eslint-disable-line jsx-a11y/no-noninteractive-tabindex
+          onKeyDown={handleContainerKeyDown}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <div
+            style={{
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transition:
+                isDragging || isCreating || editMode === 'rotate' || editMode === 'move'
+                  ? 'none'
+                  : 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)',
+              transformOrigin: 'center center',
+            }}
+            className="relative flex items-center justify-center transition-transform"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={imageRef}
+              src={imageSrc}
+              onLoad={handleImageLoad}
+              alt="Forensic View"
+              className="max-h-[80vh] max-w-none rounded-sm border border-border bg-surface shadow-preview"
+              draggable={false}
+            />
+
+            {/* Overlay Annotations */}
+            {imageLoaded && imgDims.w > 0 && (
+              <svg
+                className="absolute inset-0 w-full h-full overflow-visible"
+                viewBox={`0 0 ${imgDims.w} ${imgDims.h}`}
+                style={{ pointerEvents: canEdit ? 'auto' : 'none' }}
+              >
+                {/* Creation Preview */}
+                {creationBox && (
+                  <rect
+                    x={creationBox.xmin * imgDims.w}
+                    y={creationBox.ymin * imgDims.h}
+                    width={(creationBox.xmax - creationBox.xmin) * imgDims.w}
+                    height={(creationBox.ymax - creationBox.ymin) * imgDims.h}
+                    fill="var(--color-status-success)"
+                    fillOpacity="0.2"
+                    stroke="var(--color-status-success)"
+                    strokeWidth="2"
+                    strokeDasharray="8 4"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+
+                {activeAnnotations.map((ann, idx) => {
+                  if (!ann.box_2d) return null;
+
+                  // Find the real index in the full annotations array
+                  const realIdx = annotations.findIndex(
+                    (a) => a.box_2d && ann.box_2d && a.box_2d.every((v, i) => v === ann.box_2d[i]),
+                  );
+
+                  const [ymin, xmin, ymax, xmax] = ann.box_2d;
+                  const width = (xmax - xmin) * imgDims.w;
+                  const height = (ymax - ymin) * imgDims.h;
+                  const x = xmin * imgDims.w;
+                  const y = ymin * imgDims.h;
+
+                  const isFocused = Boolean(
+                    initialFocus &&
+                    initialFocus.box_2d &&
+                    ann.box_2d.every((v, i) => Math.abs(v - initialFocus.box_2d[i]) < 0.001),
+                  );
+
+                  const isSelected = selectedAnnotationIdx === realIdx;
+                  const isHovered = hoveredAnnotationIdx === realIdx && !isSelected;
+
+                  // Color priority: selected (success) > hovered (accent) > focused (error) > default (info)
+                  const color = getAnnotationColor(isSelected, isHovered, !!isFocused);
+
+                  // Calculate leader line positioning
+                  const isRightSide = (xmin + xmax) / 2 > 0.5;
+                  const { originX, originY, destX, destY, shoulderEndX, textX, dirX, dirY } =
+                    calculateLeaderLinePoints(ann.box_2d, imgDims, ann.labelRotation, isRightSide);
+
+                  // Box center and half-dimensions (needed for rotate handle)
+                  const cx = x + width / 2;
+                  const cy = y + height / 2;
+                  const hw = width / 2;
+                  const hh = height / 2;
+
+                  return (
+                    <g
+                      key={idx}
+                      className="annotation-group"
+                      style={{ pointerEvents: 'auto' }}
+                      onMouseEnter={() => canEdit && setHoveredAnnotationIdx(realIdx)}
+                      onMouseLeave={() => setHoveredAnnotationIdx(null)}
+                    >
+                      {/* Bounding Box */}
+                      <rect
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={height}
+                        fill={
+                          isSelected
+                            ? 'rgba(16, 185, 129, 0.1)'
+                            : isHovered
+                              ? 'rgba(34, 211, 216, 0.08)'
+                              : 'none'
+                        }
+                        stroke={color}
+                        strokeWidth={getStrokeWidth(isSelected, isHovered)}
+                        vectorEffect="non-scaling-stroke"
+                        style={{ cursor: canEdit ? 'pointer' : 'default' }}
+                        className={`annotation-control ${isFocused ? 'animate-pulse' : ''}`}
+                        onClick={(e) => handleAnnotationClick(e, realIdx)}
+                      />
+
+                      {/* Leader Line (no transform - positions are pre-calculated with rotation) */}
+                      <path
+                        d={`M ${originX} ${originY} L ${destX} ${destY} L ${shoulderEndX} ${destY}`}
+                        stroke={color}
+                        strokeWidth="1.5"
+                        fill="none"
+                        vectorEffect="non-scaling-stroke"
+                      />
+
+                      {/* Label Text (always horizontal for readability) */}
+                      {editingLabelIdx === realIdx ? (
+                        <foreignObject
+                          x={isRightSide ? textX - 200 : textX}
+                          y={destY - 15}
+                          width="200"
+                          height="30"
+                        >
+                          <input
+                            ref={labelInputRef}
+                            type="text"
+                            value={editingLabelText}
+                            onChange={(e) => setEditingLabelText(e.target.value)}
+                            onBlur={saveLabel}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveLabel();
+                              if (e.key === 'Escape') {
+                                setEditingLabelIdx(null);
+                                setEditingLabelText('');
+                              }
+                            }}
+                            className="h-full w-full rounded border border-accent bg-surface px-2 font-mono text-xs text-text outline-none"
+                            style={{ fontSize: Math.max(imgDims.w, imgDims.h) * 0.015 }}
+                          />
+                        </foreignObject>
+                      ) : (
+                        <text
+                          x={textX}
+                          y={destY}
+                          fill={color}
+                          fontSize={Math.max(imgDims.w, imgDims.h) * 0.02}
+                          fontWeight="700"
+                          textAnchor={isRightSide ? 'end' : 'start'}
+                          alignmentBaseline="middle"
+                          style={{
+                            textShadow: '0px 2px 4px rgba(0,0,0,0.9)',
+                            fontFamily: 'monospace',
+                            cursor: canEdit ? 'pointer' : 'default',
+                          }}
+                          className="annotation-control"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (canEdit) startEditLabel(realIdx);
+                          }}
+                        >
+                          {ann.label.toUpperCase()}
+                        </text>
+                      )}
+
+                      {/* Edit Controls (when selected) */}
+                      {isSelected && canEdit && (
+                        <g className="annotation-control">
+                          {/* Move Handle */}
+                          <g
+                            transform={`translate(${x + width / 2}, ${y + height / 2})`}
+                            style={{ cursor: 'move' }}
+                            onMouseDown={(e) => startMove(e, realIdx)}
+                            className="move-handle"
+                          >
+                            <circle
+                              r={Math.max(imgDims.w, imgDims.h) * 0.018}
+                              fill="var(--color-status-success)"
+                              className="transition-colors"
+                              style={{ filter: 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.5))' }}
+                            />
+                            <foreignObject
+                              x={-10}
+                              y={-10}
+                              width="20"
+                              height="20"
+                              style={{ pointerEvents: 'none' }}
+                            >
+                              <div className="flex items-center justify-center w-full h-full">
+                                <Move size={12} color="white" />
+                              </div>
+                            </foreignObject>
+                          </g>
+
+                          {/* Rotate Handle - positioned along the leader line */}
+                          {(() => {
+                            const handleRadius = Math.max(imgDims.w, imgDims.h) * 0.04;
+                            // Handle is along the leader line direction, at handleRadius from origin
+                            const handleX = originX + dirX * handleRadius;
+                            const handleY = originY + dirY * handleRadius;
+
+                            return (
+                              <g className="rotate-handle">
+                                {/* Arc around box center showing rotation path */}
+                                <circle
+                                  cx={cx}
+                                  cy={cy}
+                                  r={Math.max(hw, hh) + handleRadius * 0.5}
+                                  fill="none"
+                                  stroke="var(--color-accent)"
+                                  strokeWidth="1"
+                                  strokeDasharray="4 4"
+                                  opacity={0.3}
+                                  vectorEffect="non-scaling-stroke"
+                                  style={{ pointerEvents: 'none' }}
+                                />
+                                {/* Connection line from origin to handle */}
+                                <line
+                                  x1={originX}
+                                  y1={originY}
+                                  x2={handleX}
+                                  y2={handleY}
+                                  stroke="var(--color-accent)"
+                                  strokeWidth="2"
+                                  vectorEffect="non-scaling-stroke"
+                                  style={{ pointerEvents: 'none' }}
+                                />
+                                {/* Clickable handle circle */}
+                                <circle
+                                  cx={handleX}
+                                  cy={handleY}
+                                  r={Math.max(imgDims.w, imgDims.h) * 0.022}
+                                  fill="var(--color-accent)"
+                                  style={{
+                                    cursor: 'grab',
+                                    filter: 'drop-shadow(0 0 6px rgba(59, 166, 241, 0.7))',
+                                  }}
+                                  className="annotation-control"
+                                  onMouseDown={(e) => startRotate(e, realIdx)}
+                                />
+                                {/* Icon (visual only) */}
+                                <foreignObject
+                                  x={handleX - 10}
+                                  y={handleY - 10}
+                                  width="20"
+                                  height="20"
+                                  style={{ pointerEvents: 'none' }}
+                                >
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    <RotateCw size={12} color="var(--color-ink-black)" />
+                                  </div>
+                                </foreignObject>
+                              </g>
+                            );
+                          })()}
+
+                          {/* Delete Button */}
+                          <g
+                            transform={`translate(${x + width}, ${y})`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAnnotation(realIdx);
+                            }}
+                          >
+                            <circle r={Math.max(imgDims.w, imgDims.h) * 0.012} fill="#ef4444" />
+                            <foreignObject
+                              x={-8}
+                              y={-8}
+                              width="16"
+                              height="16"
+                              style={{ pointerEvents: 'none' }}
+                            >
+                              <div className="flex items-center justify-center w-full h-full">
+                                <Trash2 size={10} color="white" />
+                              </div>
+                            </foreignObject>
+                          </g>
+
+                          {/* Edit Label Button */}
+                          <g
+                            transform={`translate(${x}, ${y})`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEditLabel(realIdx);
+                            }}
+                          >
+                            <circle
+                              r={Math.max(imgDims.w, imgDims.h) * 0.012}
+                              fill="var(--color-status-info)"
+                            />
+                            <foreignObject
+                              x={-8}
+                              y={-8}
+                              width="16"
+                              height="16"
+                              style={{ pointerEvents: 'none' }}
+                            >
+                              <div className="flex items-center justify-center w-full h-full">
+                                <Edit3 size={10} color="white" />
+                              </div>
+                            </foreignObject>
+                          </g>
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
+          </div>
+        </div>
+
+        {/* Footer Info */}
+        <div className="pointer-events-none absolute bottom-6 left-0 right-0 flex justify-center">
+          <div className="flex max-w-[calc(100%-2rem)] flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-button border border-border bg-surface px-4 py-2 text-[9px] font-bold uppercase tracking-[0.12em] text-text-secondary shadow-subtle sm:flex-nowrap sm:gap-6 sm:px-6 sm:py-3 sm:text-[10px] sm:tracking-[0.2em]">
+            <div className="flex items-center gap-2">
+              <span className="text-text">Scroll</span> Zoom
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-text">Drag</span> Pan
+            </div>
+            <div className="flex items-center gap-2 font-bold text-status-info">
+              {scale.toFixed(1)}x MAGNIFICATION
+            </div>
+            {canEdit && (
+              <div className="flex items-center gap-2 font-bold text-status-success">
+                <Edit3 size={12} /> EDIT MODE
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
