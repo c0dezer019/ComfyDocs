@@ -69,26 +69,22 @@ interface WorkflowGraphEnhancedProps {
 // SEVERITY HELPERS
 // ============================================================================
 
-const getSeverityColor = (
-  errorCount: number,
-  warningCount: number,
-  infoCount: number
-): string => {
-  if (errorCount > 0) return 'border-red-500 ring-red-500/30';
-  if (warningCount > 0) return 'border-orange-500 ring-orange-500/30';
-  if (infoCount > 0) return 'border-blue-500 ring-blue-500/30';
-  return 'border-slate-700';
+const getSeverityColor = (errorCount: number, warningCount: number, infoCount: number): string => {
+  if (errorCount > 0) return 'border-status-error ring-status-error/30';
+  if (warningCount > 0) return 'border-status-warning ring-status-warning/30';
+  if (infoCount > 0) return 'border-status-info ring-status-info/30';
+  return 'border-border';
 };
 
 const getSeverityBgColor = (
   errorCount: number,
   warningCount: number,
-  infoCount: number
+  infoCount: number,
 ): string => {
-  if (errorCount > 0) return 'bg-red-500/5';
-  if (warningCount > 0) return 'bg-orange-500/5';
-  if (infoCount > 0) return 'bg-blue-500/5';
-  return 'bg-[#2a2a2a]';
+  if (errorCount > 0) return 'bg-status-error/10';
+  if (warningCount > 0) return 'bg-status-warning/10';
+  if (infoCount > 0) return 'bg-status-info/10';
+  return 'bg-surface';
 };
 
 const SeverityIcon: React.FC<{
@@ -97,9 +93,9 @@ const SeverityIcon: React.FC<{
   infoCount: number;
   size?: number;
 }> = ({ errorCount, warningCount, infoCount, size = 12 }) => {
-  if (errorCount > 0) return <AlertCircle size={size} className="text-red-400" />;
-  if (warningCount > 0) return <AlertTriangle size={size} className="text-orange-400" />;
-  if (infoCount > 0) return <Info size={size} className="text-blue-400" />;
+  if (errorCount > 0) return <AlertCircle size={size} className="text-status-error" />;
+  if (warningCount > 0) return <AlertTriangle size={size} className="text-status-warning" />;
+  if (infoCount > 0) return <Info size={size} className="text-status-info" />;
   return null;
 };
 
@@ -258,7 +254,7 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
 
       setTransform({ x, y, scale });
     },
-    [nodes]
+    [nodes],
   );
 
   // Focus when focusedNodeId changes
@@ -303,9 +299,9 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
     const sourceDiag = nodeDiagnostics?.get(sourceId);
     const targetDiag = nodeDiagnostics?.get(targetId);
 
-    if (sourceDiag?.errorCount || targetDiag?.errorCount) return '#ef4444';
-    if (sourceDiag?.warningCount || targetDiag?.warningCount) return '#f97316';
-    return '#64748b';
+    if (sourceDiag?.errorCount || targetDiag?.errorCount) return 'var(--color-status-error)';
+    if (sourceDiag?.warningCount || targetDiag?.warningCount) return 'var(--color-status-warning)';
+    return 'var(--color-text-secondary)';
   };
 
   // Node click handler
@@ -320,33 +316,33 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
   };
 
   return (
-    <div className="relative w-full h-[600px] bg-[#1a1a1a] rounded-xl overflow-hidden border border-slate-800 shadow-inner group">
+    <div className="group relative h-[600px] w-full overflow-hidden rounded-card border border-border bg-surface-muted shadow-card">
       {/* Controls Overlay */}
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
         <button
           onClick={() => setTransform((t) => ({ ...t, scale: Math.min(5, t.scale + 0.1) }))}
-          className="p-2 bg-slate-800 rounded hover:bg-slate-700 text-white shadow"
+          className="rounded-button border border-border bg-surface p-2 text-text shadow-subtle transition-colors hover:bg-surface-muted"
           aria-label="Zoom in"
         >
           <ZoomIn size={16} />
         </button>
         <button
           onClick={() => setTransform((t) => ({ ...t, scale: Math.max(0.1, t.scale - 0.1) }))}
-          className="p-2 bg-slate-800 rounded hover:bg-slate-700 text-white shadow"
+          className="rounded-button border border-border bg-surface p-2 text-text shadow-subtle transition-colors hover:bg-surface-muted"
           aria-label="Zoom out"
         >
           <ZoomOut size={16} />
         </button>
         <button
           onClick={centerGraph}
-          className="p-2 bg-slate-800 rounded hover:bg-slate-700 text-white shadow"
+          className="rounded-button border border-border bg-surface p-2 text-text shadow-subtle transition-colors hover:bg-surface-muted"
           aria-label="Fit to view"
         >
           <Maximize2 size={16} />
         </button>
         <button
           onClick={() => setTransform({ x: 0, y: 0, scale: 1 })}
-          className="p-2 bg-slate-800 rounded hover:bg-slate-700 text-white shadow"
+          className="rounded-button border border-border bg-surface p-2 text-text shadow-subtle transition-colors hover:bg-surface-muted"
           aria-label="Reset view"
         >
           <RotateCcw size={16} />
@@ -355,17 +351,17 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
 
       {/* Legend */}
       {nodeDiagnostics && nodeDiagnostics.size > 0 && (
-        <div className="absolute top-4 left-4 flex items-center gap-4 text-[10px] text-slate-400 bg-black/50 px-3 py-2 rounded-lg z-10">
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-4 rounded-input border border-border bg-surface/95 px-3 py-2 text-[10px] text-text-secondary">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="h-2 w-2 rounded-full bg-status-error" />
             Errors
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-orange-500" />
+            <span className="h-2 w-2 rounded-full bg-status-warning" />
             Warnings
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="h-2 w-2 rounded-full bg-status-info" />
             Info
           </span>
         </div>
@@ -401,7 +397,7 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
                 stroke={getLinkColor(link)}
                 strokeWidth="2"
                 fill="none"
-                opacity="0.6"
+                opacity="0.8"
               />
             ))}
           </svg>
@@ -409,13 +405,20 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
           {/* Nodes */}
           {nodes.map((node) => {
             const w = node.size ? (Array.isArray(node.size) ? node.size[0] : node.size.width) : 210;
-            const h = node.size ? (Array.isArray(node.size) ? node.size[1] : node.size.height) : 100;
+            const h = node.size
+              ? Array.isArray(node.size)
+                ? node.size[1]
+                : node.size.height
+              : 100;
 
             const diagInfo = nodeDiagnostics?.get(node.id);
-            const hasIssues = diagInfo && (diagInfo.errorCount > 0 || diagInfo.warningCount > 0 || diagInfo.infoCount > 0);
+            const hasIssues =
+              diagInfo &&
+              (diagInfo.errorCount > 0 || diagInfo.warningCount > 0 || diagInfo.infoCount > 0);
             const isFocused = focusedNodeId === node.id;
             const isHovered = hoveredNodeId === node.id;
-            const shouldDim = dimUnaffectedNodes && affectedNodeIds.size > 0 && !affectedNodeIds.has(node.id);
+            const shouldDim =
+              dimUnaffectedNodes && affectedNodeIds.size > 0 && !affectedNodeIds.has(node.id);
 
             return (
               <div
@@ -433,18 +436,18 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
                   ${getSeverityBgColor(
                     diagInfo?.errorCount || 0,
                     diagInfo?.warningCount || 0,
-                    diagInfo?.infoCount || 0
+                    diagInfo?.infoCount || 0,
                   )}
                   ${
                     isFocused
-                      ? 'border-2 border-indigo-500 ring-4 ring-indigo-500/30 scale-105 z-20'
+                      ? 'z-20 scale-105 border-2 border-accent ring-4 ring-accent/30'
                       : hasIssues
-                      ? `border-2 ring-2 ${getSeverityColor(
-                          diagInfo?.errorCount || 0,
-                          diagInfo?.warningCount || 0,
-                          diagInfo?.infoCount || 0
-                        )}`
-                      : 'border border-slate-700 hover:border-indigo-500'
+                        ? `border-2 ring-2 ${getSeverityColor(
+                            diagInfo?.errorCount || 0,
+                            diagInfo?.warningCount || 0,
+                            diagInfo?.infoCount || 0,
+                          )}`
+                        : 'border border-border hover:border-accent'
                   }
                   ${shouldDim ? 'opacity-30' : ''}
                   ${isHovered && !isFocused ? 'scale-[1.02] z-10' : ''}
@@ -459,13 +462,15 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
                   className={`
                     px-3 py-1 rounded-t border-b text-[10px] font-bold flex justify-between items-center
                     ${
-                      hasIssues
-                        ? diagInfo?.errorCount
-                          ? 'bg-red-500/20 border-red-500/30 text-red-300'
-                          : diagInfo?.warningCount
-                          ? 'bg-orange-500/20 border-orange-500/30 text-orange-300'
-                          : 'bg-blue-500/20 border-blue-500/30 text-blue-300'
-                        : 'bg-slate-800 border-slate-700 text-slate-300'
+                      isFocused
+                        ? 'border-accent bg-accent-subtle text-text'
+                        : hasIssues
+                          ? diagInfo?.errorCount
+                            ? 'border-status-error/30 bg-status-error/10 text-status-error'
+                            : diagInfo?.warningCount
+                              ? 'border-status-warning/30 bg-status-warning/10 text-status-warning'
+                              : 'border-status-info/30 bg-status-info/10 text-status-info'
+                          : 'border-border bg-surface-muted text-text'
                     }
                   `}
                   title={node.type}
@@ -480,22 +485,22 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
                     )}
                     {node.title || node.type}
                   </span>
-                  <span className="text-slate-600 text-[8px] whitespace-nowrap">#{node.id}</span>
+                  <span className="whitespace-nowrap text-[8px] text-text-muted">#{node.id}</span>
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 p-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                <div className="flex-1 overflow-y-auto p-2">
                   {node.widgets_values &&
                     node.widgets_values.map((val, i) => (
                       <div key={`w-${i}`} className="mb-1 last:mb-0">
-                        <div className="text-[9px] text-slate-300 font-mono whitespace-pre-wrap break-words bg-black/20 rounded px-1.5 py-0.5 border border-white/5">
+                        <div className="break-words rounded border border-border bg-surface-muted px-1.5 py-0.5 font-mono text-[9px] whitespace-pre-wrap text-text-secondary">
                           {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                         </div>
                       </div>
                     ))}
 
                   {(!node.widgets_values || node.widgets_values.length === 0) && (
-                    <div className="text-[8px] text-slate-600 italic text-center mt-1">
+                    <div className="mt-1 text-center text-[8px] italic text-text-muted">
                       No parameters
                     </div>
                   )}
@@ -505,20 +510,22 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
                 {showDiagnosticBadges && hasIssues && (
                   <div className="absolute -top-2 -right-2 flex gap-1">
                     {diagInfo?.errorCount > 0 && (
-                      <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center shadow-lg">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-status-error text-[9px] font-semibold text-text-inverse shadow-subtle">
                         {diagInfo.errorCount}
                       </span>
                     )}
                     {diagInfo?.warningCount > 0 && (
-                      <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center shadow-lg">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-status-warning text-[9px] font-semibold text-text-inverse shadow-subtle">
                         {diagInfo.warningCount}
                       </span>
                     )}
-                    {diagInfo?.infoCount > 0 && !diagInfo?.errorCount && !diagInfo?.warningCount && (
-                      <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[9px] font-bold flex items-center justify-center shadow-lg">
-                        {diagInfo.infoCount}
-                      </span>
-                    )}
+                    {diagInfo?.infoCount > 0 &&
+                      !diagInfo?.errorCount &&
+                      !diagInfo?.warningCount && (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-status-info text-[9px] font-semibold text-text-inverse shadow-subtle">
+                          {diagInfo.infoCount}
+                        </span>
+                      )}
                   </div>
                 )}
               </div>
@@ -528,18 +535,18 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
       </div>
 
       {/* Status Bar */}
-      <div className="absolute bottom-4 left-4 flex items-center gap-4 text-xs text-slate-500 bg-black/50 px-3 py-1.5 rounded pointer-events-none">
+      <div className="pointer-events-none absolute bottom-4 left-4 flex items-center gap-4 rounded-input border border-border bg-surface/95 px-3 py-1.5 text-xs text-text-secondary">
         <span>{nodes.length} Nodes</span>
         <span>{links.length} Links</span>
         {nodeDiagnostics && nodeDiagnostics.size > 0 && (
-          <span className="text-amber-400">{nodeDiagnostics.size} with issues</span>
+          <span className="text-status-warning">{nodeDiagnostics.size} with issues</span>
         )}
-        <span className="text-slate-600">Zoom: {Math.round(transform.scale * 100)}%</span>
+        <span className="text-text-muted">Zoom: {Math.round(transform.scale * 100)}%</span>
       </div>
 
       {/* Focused Node Info */}
       {focusedNodeId !== null && focusedNodeId !== undefined && (
-        <div className="absolute bottom-4 right-4 bg-indigo-500/20 border border-indigo-500/30 rounded-lg px-3 py-2 text-xs text-indigo-300">
+        <div className="absolute right-4 bottom-4 rounded-input border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-text">
           Focused: Node #{focusedNodeId}
         </div>
       )}

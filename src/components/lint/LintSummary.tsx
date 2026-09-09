@@ -61,77 +61,70 @@ export const LintSummary: React.FC<LintSummaryProps> = ({
   const hasIssues = totalCount > 0;
 
   // Determine health status
-  const healthStatus = errorCount > 0
-    ? 'critical'
-    : warningCount > 0
-    ? 'warning'
-    : 'healthy';
+  const healthStatus = errorCount > 0 ? 'critical' : warningCount > 0 ? 'warning' : 'healthy';
 
   const healthColors = {
-    critical: 'from-red-500/20 to-rose-500/10 border-red-500/30',
-    warning: 'from-orange-500/20 to-amber-500/10 border-orange-500/30',
-    healthy: 'from-green-500/20 to-emerald-500/10 border-green-500/30',
+    critical: 'border-red-200 bg-red-50',
+    warning: 'border-amber-200 bg-amber-50',
+    healthy: 'border-green-200 bg-green-50',
   };
 
   const healthTextColors = {
-    critical: 'text-red-400',
-    warning: 'text-orange-400',
-    healthy: 'text-green-400',
+    critical: 'text-status-error',
+    warning: 'text-status-warning',
+    healthy: 'text-status-success',
   };
 
   if (variant === 'compact') {
     return (
       <div
         className={`
-          flex items-center gap-4 px-4 py-2.5 rounded-xl border
-          bg-gradient-to-r ${healthColors[healthStatus]}
+          flex flex-wrap items-center gap-3 rounded-card border px-4 py-2.5
+          ${healthColors[healthStatus]}
         `}
+        aria-live="polite"
       >
         {/* Status Icon */}
         {isLinting ? (
-          <Loader2 size={18} className="animate-spin text-indigo-400" />
+          <Loader2 size={18} className="animate-spin text-status-info" />
         ) : healthStatus === 'healthy' ? (
-          <CheckCircle2 size={18} className="text-green-400" />
+          <CheckCircle2 size={18} className="text-status-success" />
         ) : healthStatus === 'critical' ? (
-          <AlertCircle size={18} className="text-red-400" />
+          <AlertCircle size={18} className="text-status-error" />
         ) : (
-          <AlertTriangle size={18} className="text-orange-400" />
+          <AlertTriangle size={18} className="text-status-warning" />
         )}
 
         {/* Counts */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <CountBadge
             icon={AlertCircle}
             count={errorCount}
-            color="text-red-400"
-            bgColor="bg-red-500/10"
+            color="text-status-error"
+            bgColor="bg-white"
             label="Errors"
           />
           <CountBadge
             icon={AlertTriangle}
             count={warningCount}
-            color="text-orange-400"
-            bgColor="bg-orange-500/10"
+            color="text-status-warning"
+            bgColor="bg-white"
             label="Warnings"
           />
           <CountBadge
             icon={Info}
             count={infoCount}
-            color="text-blue-400"
-            bgColor="bg-blue-500/10"
+            color="text-status-info"
+            bgColor="bg-white"
             label="Info"
           />
         </div>
 
         {/* Score */}
         {overallScore !== undefined && (
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">
-              Score
-            </span>
-            <span
-              className={`text-lg font-black ${getScoreColor(overallScore)}`}
-            >
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <span className="text-[10px] font-bold uppercase text-text-secondary">Score</span>
+            <span className={`text-lg font-black ${getScoreColor(overallScore)}`}>
               {overallScore.toFixed(1)}
             </span>
           </div>
@@ -142,7 +135,7 @@ export const LintSummary: React.FC<LintSummaryProps> = ({
           <button
             onClick={onRunLint}
             disabled={isLinting}
-            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+            className="rounded-button bg-accent px-4 py-1.5 text-xs font-semibold text-text transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {isLinting ? 'Analyzing...' : 'Re-analyze'}
           </button>
@@ -155,46 +148,46 @@ export const LintSummary: React.FC<LintSummaryProps> = ({
   return (
     <div
       className={`
-        p-6 rounded-2xl border
-        bg-gradient-to-br ${healthColors[healthStatus]}
+        rounded-card border bg-surface p-6 shadow-subtle
       `}
+      aria-live="polite"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           {isLinting ? (
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-              <Loader2 size={20} className="animate-spin text-indigo-400" />
+            <div className="flex size-10 items-center justify-center rounded-icon bg-accent-subtle">
+              <Loader2 size={20} className="animate-spin text-status-info" />
             </div>
           ) : (
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              className={`flex size-10 items-center justify-center rounded-icon ${
                 healthStatus === 'healthy'
-                  ? 'bg-green-500/20'
+                  ? 'bg-green-50'
                   : healthStatus === 'critical'
-                  ? 'bg-red-500/20'
-                  : 'bg-orange-500/20'
+                    ? 'bg-red-50'
+                    : 'bg-amber-50'
               }`}
             >
               {healthStatus === 'healthy' ? (
-                <CheckCircle2 size={20} className="text-green-400" />
+                <CheckCircle2 size={20} className="text-status-success" />
               ) : healthStatus === 'critical' ? (
-                <AlertCircle size={20} className="text-red-400" />
+                <AlertCircle size={20} className="text-status-error" />
               ) : (
-                <AlertTriangle size={20} className="text-orange-400" />
+                <AlertTriangle size={20} className="text-status-warning" />
               )}
             </div>
           )}
           <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-wider">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-text">
               Workflow Analysis
             </h3>
             <p className={`text-xs ${healthTextColors[healthStatus]}`}>
               {isLinting
                 ? 'Analyzing workflow...'
                 : !hasIssues
-                ? 'No issues detected'
-                : `${totalCount} issue${totalCount !== 1 ? 's' : ''} found`}
+                  ? 'No issues detected'
+                  : `${totalCount} issue${totalCount !== 1 ? 's' : ''} found`}
             </p>
           </div>
         </div>
@@ -210,7 +203,7 @@ export const LintSummary: React.FC<LintSummaryProps> = ({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                className="text-white/5"
+                className="text-border-muted"
               />
               <circle
                 cx="18"
@@ -238,31 +231,31 @@ export const LintSummary: React.FC<LintSummaryProps> = ({
           icon={AlertCircle}
           label="Errors"
           count={errorCount}
-          color="text-red-400"
-          bgColor="bg-red-500/10"
-          borderColor="border-red-500/20"
+          color="text-status-error"
+          bgColor="bg-red-50"
+          borderColor="border-red-200"
         />
         <SeverityCard
           icon={AlertTriangle}
           label="Warnings"
           count={warningCount}
-          color="text-orange-400"
-          bgColor="bg-orange-500/10"
-          borderColor="border-orange-500/20"
+          color="text-status-warning"
+          bgColor="bg-amber-50"
+          borderColor="border-amber-200"
         />
         <SeverityCard
           icon={Info}
           label="Info"
           count={infoCount}
-          color="text-blue-400"
-          bgColor="bg-blue-500/10"
-          borderColor="border-blue-500/20"
+          color="text-status-info"
+          bgColor="bg-sky-50"
+          borderColor="border-sky-200"
         />
       </div>
 
       {/* Metadata */}
       {metadata && (
-        <div className="flex items-center gap-6 text-[10px] text-slate-500">
+        <div className="flex items-center gap-6 text-[10px] text-text-secondary">
           <div className="flex items-center gap-1.5">
             <Layers size={12} />
             <span>{metadata.nodesAnalyzed} nodes</span>
@@ -283,7 +276,7 @@ export const LintSummary: React.FC<LintSummaryProps> = ({
         <button
           onClick={onRunLint}
           disabled={isLinting}
-          className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+          className="mt-4 w-full rounded-button bg-accent py-3 text-sm font-semibold text-text transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
           {isLinting ? (
             <span className="flex items-center justify-center gap-2">
@@ -311,15 +304,9 @@ interface CountBadgeProps {
   label: string;
 }
 
-const CountBadge: React.FC<CountBadgeProps> = ({
-  icon: Icon,
-  count,
-  color,
-  bgColor,
-  label,
-}) => (
+const CountBadge: React.FC<CountBadgeProps> = ({ icon: Icon, count, color, bgColor, label }) => (
   <div
-    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${bgColor}`}
+    className={`flex items-center gap-1.5 rounded-button border border-border px-2.5 py-1 ${bgColor}`}
     title={label}
   >
     <Icon size={12} className={color} />
@@ -344,12 +331,10 @@ const SeverityCard: React.FC<SeverityCardProps> = ({
   bgColor,
   borderColor,
 }) => (
-  <div
-    className={`p-4 rounded-xl border ${bgColor} ${borderColor} flex flex-col items-center`}
-  >
+  <div className={`flex flex-col items-center rounded-card border p-4 ${bgColor} ${borderColor}`}>
     <Icon size={20} className={color} />
     <span className={`text-2xl font-black mt-2 ${color}`}>{count}</span>
-    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
+    <span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary">
       {label}
     </span>
   </div>
@@ -360,11 +345,9 @@ const SeverityCard: React.FC<SeverityCardProps> = ({
 // ============================================================================
 
 function getScoreColor(score: number): string {
-  if (score >= 9) return 'text-green-400';
-  if (score >= 7) return 'text-emerald-400';
-  if (score >= 5) return 'text-yellow-400';
-  if (score >= 3) return 'text-orange-400';
-  return 'text-red-400';
+  if (score >= 7) return 'text-status-success';
+  if (score >= 5) return 'text-status-warning';
+  return 'text-status-error';
 }
 
 export default LintSummary;

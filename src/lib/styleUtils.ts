@@ -6,29 +6,29 @@
 export const getSeverityColor = (severity: string): string => {
   switch (severity.toLowerCase()) {
     case 'critical':
-      return 'bg-red-500/10 text-red-400 border-red-500/20';
+      return 'border-status-error/20 bg-status-error/10 text-status-error';
     case 'major':
-      return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+      return 'border-status-error/20 bg-status-error/10 text-status-error';
     case 'minor':
-      return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+      return 'border-status-warning/20 bg-status-warning/10 text-status-warning';
     case 'note':
-      return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+      return 'border-status-info/20 bg-status-info/10 text-status-info';
     default:
-      return 'bg-slate-800 text-slate-400';
+      return 'border-border bg-surface-muted text-text-secondary';
   }
 };
 
 export const getScoreColor = (score: number): string => {
-  if (score >= 8) return 'text-emerald-400';
-  if (score >= 5) return 'text-yellow-400';
-  return 'text-red-400';
+  if (score >= 8) return 'text-status-success';
+  if (score >= 5) return 'text-status-warning';
+  return 'text-status-error';
 };
 
 export const getConfidenceColor = (conf: number | undefined): string => {
-  if (!conf) return 'text-slate-400 bg-slate-800';
-  if (conf >= 80) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-  if (conf >= 50) return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
-  return 'text-red-400 bg-red-500/10 border-red-500/20';
+  if (!conf) return 'border-border bg-surface-muted text-text-secondary';
+  if (conf >= 80) return 'border-status-success/20 bg-status-success/10 text-status-success';
+  if (conf >= 50) return 'border-status-warning/20 bg-status-warning/10 text-status-warning';
+  return 'border-status-error/20 bg-status-error/10 text-status-error';
 };
 
 /**

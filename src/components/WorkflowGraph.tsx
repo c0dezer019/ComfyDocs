@@ -218,19 +218,19 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({ workflow }) => {
   };
 
   return (
-    <div className="relative w-full h-[600px] bg-[#1a1a1a] rounded-xl overflow-hidden border border-slate-800 shadow-inner group">
+    <div className="group relative h-[600px] w-full overflow-hidden rounded-card border border-border bg-surface-muted shadow-card">
       {/* Controls Overlay */}
       <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
         <button
           onClick={() => setTransform((t) => ({ ...t, scale: t.scale + 0.1 }))}
-          className="p-2 bg-slate-800 rounded hover:bg-slate-700 text-white shadow"
+          className="rounded-button border border-border bg-surface p-2 text-text shadow-subtle transition-colors hover:bg-surface-muted"
           aria-label="Zoom in workflow graph"
         >
           <ZoomIn size={16} aria-hidden="true" />
         </button>
         <button
           onClick={() => setTransform((t) => ({ ...t, scale: Math.max(0.1, t.scale - 0.1) }))}
-          className="p-2 bg-slate-800 rounded hover:bg-slate-700 text-white shadow"
+          className="rounded-button border border-border bg-surface p-2 text-text shadow-subtle transition-colors hover:bg-surface-muted"
           aria-label="Zoom out workflow graph"
         >
           <ZoomOut size={16} aria-hidden="true" />
@@ -265,10 +265,10 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({ workflow }) => {
               <path
                 key={String(link[0])}
                 d={getLinkPath(link)}
-                stroke="#64748b"
+                stroke="var(--color-text-secondary)"
                 strokeWidth="2"
                 fill="none"
-                opacity="0.6"
+                opacity="0.8"
               />
             ))}
           </svg>
@@ -292,22 +292,22 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({ workflow }) => {
                   width: w,
                   height: Math.max(h, 60), // min height to ensure header fits
                 }}
-                className="bg-[#2a2a2a] rounded shadow-lg border border-slate-700 flex flex-col pointer-events-auto hover:border-indigo-500 transition-colors"
+                className="pointer-events-auto flex flex-col rounded-input border border-border bg-surface shadow-subtle transition-colors hover:border-accent"
               >
                 <div
-                  className="px-3 py-1 bg-slate-800 rounded-t border-b border-slate-700 text-[10px] font-bold text-slate-300 flex justify-between items-center"
+                  className="flex items-center justify-between rounded-t border-b border-border bg-surface-muted px-3 py-1 text-[10px] font-semibold text-text"
                   title={node.type}
                 >
                   <span className="truncate mr-2">{node.title || node.type}</span>
-                  <span className="text-slate-600 text-[8px] whitespace-nowrap">#{node.id}</span>
+                  <span className="whitespace-nowrap text-[8px] text-text-muted">#{node.id}</span>
                 </div>
 
-                <div className="flex-1 p-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                <div className="flex-1 overflow-y-auto p-2">
                   {/* Render All Widgets (Parameters) */}
                   {node.widgets_values &&
                     node.widgets_values.map((val, i: number) => (
                       <div key={`w-${i}`} className="mb-1 last:mb-0">
-                        <div className="text-[9px] text-slate-300 font-mono whitespace-pre-wrap break-words bg-black/20 rounded px-1.5 py-0.5 border border-white/5">
+                        <div className="break-words rounded border border-border bg-surface-muted px-1.5 py-0.5 font-mono text-[9px] whitespace-pre-wrap text-text-secondary">
                           {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                         </div>
                       </div>
@@ -315,7 +315,7 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({ workflow }) => {
 
                   {/* Fallback if no widgets */}
                   {(!node.widgets_values || node.widgets_values.length === 0) && (
-                    <div className="text-[8px] text-slate-600 italic text-center mt-1">
+                    <div className="mt-1 text-center text-[8px] italic text-text-muted">
                       No parameters
                     </div>
                   )}
@@ -326,7 +326,7 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({ workflow }) => {
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 text-xs text-slate-500 bg-black/50 px-2 py-1 rounded pointer-events-none">
+      <div className="pointer-events-none absolute bottom-4 left-4 rounded-input border border-border bg-surface/95 px-2 py-1 text-xs text-text-secondary">
         {nodes.length} Nodes • {links.length} Links
       </div>
     </div>

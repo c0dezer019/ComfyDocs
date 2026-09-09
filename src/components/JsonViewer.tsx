@@ -33,35 +33,35 @@ export const JsonViewer: React.FC<JsonViewerProps> = ({ data, filename, label })
 
   if (!data) {
     return (
-      <div className="p-8 text-center text-slate-400 bg-slate-900/50 rounded-lg border border-slate-800">
+      <div className="rounded-card border border-border bg-surface-muted p-8 text-center text-text-secondary">
         No {label} data found in this image.
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col bg-slate-900 rounded-lg border border-slate-800 overflow-hidden shadow-xl h-[75vh]">
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-slate-700">
-        <h3 className="font-semibold text-slate-200">{label}</h3>
+    <div className="flex h-[75vh] flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
+      <div className="flex items-center justify-between border-b border-border bg-surface-muted px-4 py-3">
+        <h3 className="font-heading font-semibold text-text">{label}</h3>
         <div className="flex gap-2">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-700 hover:bg-slate-600 rounded transition-colors"
+            className="flex items-center gap-2 rounded-button border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-surface-muted"
           >
-            {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+            {copied ? <Check size={14} className="text-status-success" /> : <Copy size={14} />}
             {copied ? 'Copied' : 'Copy'}
           </button>
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded transition-colors"
+            className="flex items-center gap-2 rounded-button bg-accent px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-accent-hover"
           >
             <Download size={14} />
             Download .json
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto p-4 bg-[#0d1117]">
-        <pre className="text-xs font-mono text-slate-200 leading-relaxed whitespace-pre">
+      <div className="flex-1 overflow-auto bg-surface-muted p-4">
+        <pre className="whitespace-pre font-mono text-xs leading-relaxed text-text">
           {jsonString}
         </pre>
       </div>

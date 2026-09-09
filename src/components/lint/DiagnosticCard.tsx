@@ -53,22 +53,22 @@ const SeverityIcon: React.FC<{ severity: string; className?: string }> = ({
 }) => {
   switch (severity) {
     case 'Critical':
-      return <AlertCircle className={`text-red-400 ${className}`} />;
+      return <AlertCircle className={`text-status-error ${className}`} />;
     case 'Major':
-      return <AlertTriangle className={`text-orange-400 ${className}`} />;
+      return <AlertTriangle className={`text-status-warning ${className}`} />;
     case 'Minor':
-      return <AlertTriangle className={`text-yellow-400 ${className}`} />;
+      return <AlertTriangle className={`text-status-warning ${className}`} />;
     default:
-      return <Info className={`text-blue-400 ${className}`} />;
+      return <Info className={`text-status-info ${className}`} />;
   }
 };
 
 const SeverityBadge: React.FC<{ severity: string }> = ({ severity }) => {
   const colors = {
-    Critical: 'bg-red-500/10 text-red-400 border-red-500/30',
-    Major: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
-    Minor: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-    Note: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    Critical: 'border-red-200 bg-red-50 text-status-error',
+    Major: 'border-amber-200 bg-amber-50 text-status-warning',
+    Minor: 'border-amber-200 bg-amber-50 text-status-warning',
+    Note: 'border-sky-200 bg-sky-50 text-status-info',
   };
 
   return (
@@ -83,7 +83,7 @@ const SeverityBadge: React.FC<{ severity: string }> = ({ severity }) => {
 };
 
 const CategoryBadge: React.FC<{ category: string }> = ({ category }) => (
-  <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-white/5 text-slate-500 border border-white/5">
+  <span className="rounded-md border border-border bg-surface-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-text-secondary">
     {category}
   </span>
 );
@@ -104,20 +104,27 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
   const [showEducation, setShowEducation] = useState(false);
 
   // Create a diagnostic object for the education hook
-  const diagnostic = issue.ruleId ? {
-    ruleId: issue.ruleId,
-    ruleName: issue.type,
-    severity: issue.severity === 'Critical' ? 'error' as const :
-              issue.severity === 'Major' ? 'warning' as const :
-              issue.severity === 'Minor' ? 'warning' as const : 'info' as const,
-    category: 'workflow' as const,
-    nodeId: issue.nodeId || 0,
-    nodeType: issue.nodeType || 'unknown',
-    message: issue.description,
-    educationalContext: {
-      summary: issue.educationalContext || '',
-    },
-  } : null;
+  const diagnostic = issue.ruleId
+    ? {
+        ruleId: issue.ruleId,
+        ruleName: issue.type,
+        severity:
+          issue.severity === 'Critical'
+            ? ('error' as const)
+            : issue.severity === 'Major'
+              ? ('warning' as const)
+              : issue.severity === 'Minor'
+                ? ('warning' as const)
+                : ('info' as const),
+        category: 'workflow' as const,
+        nodeId: issue.nodeId || 0,
+        nodeType: issue.nodeType || 'unknown',
+        message: issue.description,
+        educationalContext: {
+          summary: issue.educationalContext || '',
+        },
+      }
+    : null;
 
   // Use education hook
   const {
@@ -157,9 +164,9 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
   return (
     <div
       className={`
-        bg-white/5 rounded-2xl border border-white/5 overflow-hidden
-        transition-all duration-200 hover:bg-white/[0.07] hover:border-white/10
-        ${isExpanded ? 'ring-1 ring-indigo-500/20' : ''}
+        overflow-hidden rounded-card border border-border bg-surface shadow-subtle
+        transition-colors duration-150 hover:border-border-muted
+        ${isExpanded ? 'ring-1 ring-accent/30' : ''}
       `}
     >
       {/* Header */}
@@ -175,28 +182,24 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
             {/* Title Row */}
             <div className="flex items-center gap-3 flex-wrap mb-2">
               <SeverityBadge severity={issue.severity} />
-              <span className="text-base font-bold text-white">{issue.type}</span>
+              <span className="font-heading text-base font-semibold text-text">{issue.type}</span>
               {issue.nodeType && <CategoryBadge category={issue.nodeType} />}
             </div>
 
             {/* Description */}
-            <p className="text-sm text-slate-400 leading-relaxed pr-4">
-              {issue.description}
-            </p>
+            <p className="pr-4 text-sm leading-relaxed text-text-secondary">{issue.description}</p>
 
             {/* Quick Tip (if available) */}
             {quickTip && !showEducation && (
-              <div className="mt-3 flex items-start gap-2 text-xs text-slate-500">
-                <Lightbulb size={12} className="text-amber-500 mt-0.5 shrink-0" />
+              <div className="mt-3 flex items-start gap-2 text-xs text-text-secondary">
+                <Lightbulb size={12} className="mt-0.5 shrink-0 text-status-warning" />
                 <span>{quickTip.summary}</span>
               </div>
             )}
 
             {/* Educational Context Preview */}
             {issue.educationalContext && !showEducation && (
-              <div className="mt-3 text-xs text-indigo-400/80 italic">
-                {issue.educationalContext}
-              </div>
+              <div className="mt-3 text-xs italic text-status-info">{issue.educationalContext}</div>
             )}
           </div>
 
@@ -206,7 +209,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
             {issue.nodeId && onFocusNode && (
               <button
                 onClick={handleFocusNode}
-                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                className="rounded-button p-2 text-text-muted transition-colors hover:bg-accent-subtle hover:text-status-info"
                 title={`Focus on node #${issue.nodeId}`}
                 aria-label={`Focus on node ${issue.nodeId}`}
               >
@@ -218,7 +221,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
             {issue.box_2d && onFocusRegion && (
               <button
                 onClick={handleFocusRegion}
-                className="p-2 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                className="rounded-button p-2 text-text-muted transition-colors hover:bg-amber-50 hover:text-status-warning"
                 title="Show in image"
                 aria-label="Show issue region in image"
               >
@@ -229,7 +232,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
             {/* Expand Toggle */}
             <button
               onClick={handleExpandToggle}
-              className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              className="rounded-button p-2 text-text-muted transition-colors hover:bg-surface-muted hover:text-text"
               aria-expanded={isExpanded}
               aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
             >
@@ -241,18 +244,18 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="border-t border-white/5 bg-black/20 p-5 space-y-4 animate-in slide-in-from-top-2">
+        <div className="space-y-4 border-t border-border bg-surface-muted p-5">
           {/* Suggested Fixes */}
           {issue.suggestedFixes && issue.suggestedFixes.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                 <Wrench size={12} />
                 Suggested Fixes
               </div>
               <ul className="space-y-2 pl-4">
                 {issue.suggestedFixes.map((fix, idx) => (
-                  <li key={idx} className="text-sm text-slate-300 flex items-start gap-2">
-                    <span className="text-indigo-400 font-mono text-xs mt-0.5">{idx + 1}.</span>
+                  <li key={idx} className="flex items-start gap-2 text-sm text-text-secondary">
+                    <span className="mt-0.5 font-mono text-xs text-status-info">{idx + 1}.</span>
                     <span>{fix}</span>
                   </li>
                 ))}
@@ -264,7 +267,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
           {issue.ruleId && !showEducation && (
             <button
               onClick={handleShowEducation}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold transition-colors"
+              className="flex items-center gap-2 rounded-button border border-accent/30 bg-accent-subtle px-4 py-2 text-xs font-semibold text-text transition-colors hover:bg-accent hover:text-text"
             >
               <BookOpen size={14} />
               Learn More
@@ -282,7 +285,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
 
           {/* Node Info */}
           {issue.nodeId && (
-            <div className="flex items-center gap-4 text-[10px] text-slate-500">
+            <div className="flex items-center gap-4 text-[10px] text-text-secondary">
               <span>
                 <span className="font-bold">Node:</span> #{issue.nodeId}
               </span>
@@ -314,24 +317,20 @@ interface EducationPanelProps {
   error: string | null;
 }
 
-const EducationPanel: React.FC<EducationPanelProps> = ({
-  education,
-  isLoading,
-  error,
-}) => {
+const EducationPanel: React.FC<EducationPanelProps> = ({ education, isLoading, error }) => {
   if (isLoading) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-indigo-500/5 rounded-xl border border-indigo-500/20">
-        <Loader2 size={16} className="animate-spin text-indigo-400" />
-        <span className="text-sm text-indigo-300">Loading educational content...</span>
+      <div className="flex items-center gap-3 rounded-card border border-sky-200 bg-sky-50 p-4">
+        <Loader2 size={16} className="animate-spin text-status-info" />
+        <span className="text-sm text-status-info">Loading educational content...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-500/5 rounded-xl border border-red-500/20">
-        <p className="text-sm text-red-400">{error}</p>
+      <div className="rounded-card border border-red-200 bg-red-50 p-4" role="alert">
+        <p className="text-sm text-status-error">{error}</p>
       </div>
     );
   }
@@ -341,36 +340,40 @@ const EducationPanel: React.FC<EducationPanelProps> = ({
   }
 
   return (
-    <div className="space-y-4 p-4 bg-gradient-to-br from-indigo-500/5 to-violet-500/5 rounded-xl border border-indigo-500/20">
+    <div className="space-y-4 rounded-card border border-sky-200 bg-sky-50 p-4">
       {/* Summary */}
       <div>
-        <h4 className="text-xs font-black text-indigo-300 uppercase tracking-widest mb-2">
+        <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-status-info">
           Understanding This Issue
         </h4>
-        <p className="text-sm text-slate-300 leading-relaxed">{education.summary}</p>
+        <p className="text-sm leading-relaxed text-text-secondary">{education.summary}</p>
       </div>
 
       {/* Explanation */}
       <div className="space-y-3">
         <div>
-          <span className="text-[10px] font-bold text-slate-500 uppercase">The Issue</span>
-          <p className="text-sm text-slate-400 mt-1">{education.explanation.issue}</p>
+          <span className="text-[10px] font-bold uppercase text-text-secondary">The Issue</span>
+          <p className="mt-1 text-sm text-text-secondary">{education.explanation.issue}</p>
         </div>
 
         <div>
-          <span className="text-[10px] font-bold text-slate-500 uppercase">Technical Context</span>
-          <p className="text-sm text-slate-400 mt-1">{education.explanation.technicalContext}</p>
+          <span className="text-[10px] font-bold uppercase text-text-secondary">
+            Technical Context
+          </span>
+          <p className="mt-1 text-sm text-text-secondary">
+            {education.explanation.technicalContext}
+          </p>
         </div>
 
         <div>
-          <span className="text-[10px] font-bold text-slate-500 uppercase">Visual Impact</span>
-          <p className="text-sm text-slate-400 mt-1">{education.explanation.visualImpact}</p>
+          <span className="text-[10px] font-bold uppercase text-text-secondary">Visual Impact</span>
+          <p className="mt-1 text-sm text-text-secondary">{education.explanation.visualImpact}</p>
         </div>
 
         {education.explanation.exceptions && (
           <div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Exceptions</span>
-            <p className="text-sm text-slate-400 mt-1 italic">
+            <span className="text-[10px] font-bold uppercase text-text-secondary">Exceptions</span>
+            <p className="mt-1 text-sm italic text-text-secondary">
               {education.explanation.exceptions}
             </p>
           </div>
@@ -380,27 +383,24 @@ const EducationPanel: React.FC<EducationPanelProps> = ({
       {/* Fixes */}
       {education.fixes.length > 0 && (
         <div>
-          <h4 className="text-xs font-black text-indigo-300 uppercase tracking-widest mb-3">
+          <h4 className="mb-3 text-xs font-bold uppercase tracking-widest text-status-info">
             How to Fix
           </h4>
           <div className="space-y-3">
             {education.fixes.slice(0, 3).map((fix, idx) => (
-              <div
-                key={idx}
-                className="p-3 bg-black/30 rounded-lg border border-white/5"
-              >
+              <div key={idx} className="rounded-lg border border-border bg-surface p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-bold flex items-center justify-center">
+                  <span className="flex size-5 items-center justify-center rounded-full bg-accent-subtle text-xs font-bold text-status-info">
                     {fix.priority}
                   </span>
-                  <span className="text-sm font-bold text-white">{fix.title}</span>
+                  <span className="text-sm font-semibold text-text">{fix.title}</span>
                   <span
                     className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
                       fix.confidence === 'high'
-                        ? 'bg-green-500/10 text-green-400'
+                        ? 'bg-green-50 text-status-success'
                         : fix.confidence === 'medium'
-                        ? 'bg-yellow-500/10 text-yellow-400'
-                        : 'bg-slate-500/10 text-slate-400'
+                          ? 'bg-amber-50 text-status-warning'
+                          : 'bg-surface-muted text-text-secondary'
                     }`}
                   >
                     {fix.confidence}
@@ -409,7 +409,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({
                 {fix.steps.length > 0 && (
                   <ol className="space-y-1 ml-7">
                     {fix.steps.map((step, stepIdx) => (
-                      <li key={stepIdx} className="text-xs text-slate-400 list-decimal">
+                      <li key={stepIdx} className="list-decimal text-xs text-text-secondary">
                         {step}
                       </li>
                     ))}
@@ -424,7 +424,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({
       {/* Resources */}
       {education.resources && education.resources.length > 0 && (
         <div>
-          <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-text-secondary">
             Learn More
           </h4>
           <div className="flex flex-wrap gap-2">
@@ -434,7 +434,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({
                 href={resource.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs text-slate-400 hover:text-white transition-colors"
+                className="flex items-center gap-1.5 rounded-button border border-border bg-surface px-3 py-1.5 text-xs text-text-secondary transition-colors hover:border-accent hover:text-status-info"
               >
                 <ExternalLink size={12} />
                 {resource.title}

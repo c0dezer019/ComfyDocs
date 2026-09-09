@@ -8,14 +8,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import {
-  Filter,
-  SortAsc,
-  Layers,
-  AlertCircle,
-  AlertTriangle,
-  Info,
-} from 'lucide-react';
+import { Filter, SortAsc, Layers, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { LintedQualityIssue } from '@/lib/lintTypes';
 import { DiagnosticCard } from './DiagnosticCard';
 import { WorkflowContext } from '@/hooks/useEducation';
@@ -58,10 +51,10 @@ const SEVERITY_ORDER: Record<string, number> = {
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  Critical: 'text-red-400',
-  Major: 'text-orange-400',
-  Minor: 'text-yellow-400',
-  Note: 'text-blue-400',
+  Critical: 'text-status-error',
+  Major: 'text-status-warning',
+  Minor: 'text-status-warning',
+  Note: 'text-status-info',
 };
 
 // ============================================================================
@@ -111,14 +104,11 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
     switch (sortBy) {
       case 'severity':
         sorted.sort(
-          (a, b) =>
-            (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99)
+          (a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99),
         );
         break;
       case 'category':
-        sorted.sort((a, b) =>
-          (a.nodeType || '').localeCompare(b.nodeType || '')
-        );
+        sorted.sort((a, b) => (a.nodeType || '').localeCompare(b.nodeType || ''));
         break;
       case 'nodeId':
         sorted.sort((a, b) => (a.nodeId || 0) - (b.nodeId || 0));
@@ -164,9 +154,7 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
   // Toggle severity filter
   const toggleSeverity = (severity: string) => {
     setSeverityFilter((prev) =>
-      prev.includes(severity)
-        ? prev.filter((s) => s !== severity)
-        : [...prev, severity]
+      prev.includes(severity) ? prev.filter((s) => s !== severity) : [...prev, severity],
     );
   };
 
@@ -189,23 +177,18 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
   // Empty state
   if (issues.length === 0 && showEmptyState) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
+      <div className="flex flex-col items-center justify-center rounded-card border border-green-200 bg-green-50 py-12 text-center">
+        <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-white">
           <svg
-            className="w-8 h-8 text-green-400"
+            className="size-8 text-status-success"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-slate-400 text-sm">{emptyMessage}</p>
+        <p className="text-sm text-status-success">{emptyMessage}</p>
       </div>
     );
   }
@@ -214,11 +197,11 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
     <div className="space-y-4">
       {/* Controls */}
       {showControls && issues.length > 0 && (
-        <div className="flex flex-wrap items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/5">
+        <div className="flex flex-wrap items-center gap-4 rounded-card border border-border bg-surface-muted p-4">
           {/* Severity Filters */}
           <div className="flex items-center gap-2">
-            <Filter size={14} className="text-slate-500" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            <Filter size={14} className="text-text-secondary" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
               Filter:
             </span>
             <div className="flex gap-1">
@@ -227,18 +210,18 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
                   key={sev}
                   onClick={() => toggleSeverity(sev)}
                   className={`
-                    flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold
-                    transition-all border
+                    flex items-center gap-1.5 rounded-button border px-2.5 py-1 text-[10px] font-bold
+                    transition-colors
                     ${
                       severityFilter.includes(sev)
                         ? sev === 'Critical'
-                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                          ? 'border-red-200 bg-red-50 text-status-error'
                           : sev === 'Major'
-                          ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                          : sev === 'Minor'
-                          ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                          : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                        : 'bg-white/5 text-slate-500 border-white/5 opacity-50'
+                            ? 'border-amber-200 bg-amber-50 text-status-warning'
+                            : sev === 'Minor'
+                              ? 'border-amber-200 bg-amber-50 text-status-warning'
+                              : 'border-sky-200 bg-sky-50 text-status-info'
+                        : 'border-border bg-surface text-text-muted opacity-60'
                     }
                   `}
                   aria-pressed={severityFilter.includes(sev)}
@@ -254,13 +237,11 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
           {/* Category Filter */}
           {categories.length > 1 && (
             <div className="flex items-center gap-2">
-              <Layers size={14} className="text-slate-500" />
+              <Layers size={14} className="text-text-secondary" />
               <select
                 value={categoryFilter || ''}
-                onChange={(e) =>
-                  setCategoryFilter(e.target.value || null)
-                }
-                className="bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-slate-300 px-3 py-1.5 outline-none"
+                onChange={(e) => setCategoryFilter(e.target.value || null)}
+                className="rounded-input border border-border bg-surface px-3 py-1.5 text-[10px] font-bold text-text outline-none"
               >
                 <option value="">All Categories</option>
                 {categories.map((cat) => (
@@ -274,11 +255,11 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
 
           {/* Sort */}
           <div className="flex items-center gap-2">
-            <SortAsc size={14} className="text-slate-500" />
+            <SortAsc size={14} className="text-text-secondary" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-slate-300 px-3 py-1.5 outline-none"
+              className="rounded-input border border-border bg-surface px-3 py-1.5 text-[10px] font-bold text-text outline-none"
             >
               <option value="severity">Sort by Severity</option>
               <option value="category">Sort by Category</option>
@@ -288,11 +269,11 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
 
           {/* Group */}
           <div className="flex items-center gap-2">
-            <Layers size={14} className="text-slate-500" />
+            <Layers size={14} className="text-text-secondary" />
             <select
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-              className="bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-slate-300 px-3 py-1.5 outline-none"
+              className="rounded-input border border-border bg-surface px-3 py-1.5 text-[10px] font-bold text-text outline-none"
             >
               <option value="none">No Grouping</option>
               <option value="severity">Group by Severity</option>
@@ -302,7 +283,7 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
           </div>
 
           {/* Count */}
-          <div className="ml-auto text-[10px] text-slate-500">
+          <div className="ml-auto text-[10px] text-text-secondary" aria-live="polite">
             Showing {sortedIssues.length} of {issues.length} issues
           </div>
         </div>
@@ -315,13 +296,9 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
             {/* Group Header */}
             {group && groupBy !== 'none' && (
               <div className="flex items-center gap-3 mb-3">
-                <h3 className="text-sm font-black text-slate-300 uppercase tracking-widest">
-                  {group}
-                </h3>
-                <span className="text-[10px] text-slate-500">
-                  ({groupIssues.length})
-                </span>
-                <div className="flex-1 h-px bg-white/5" />
+                <h3 className="text-sm font-bold uppercase tracking-widest text-text">{group}</h3>
+                <span className="text-[10px] text-text-secondary">({groupIssues.length})</span>
+                <div className="h-px flex-1 bg-border" />
               </div>
             )}
 
@@ -343,7 +320,7 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
 
       {/* Truncation Notice */}
       {maxItems > 0 && filteredIssues.length > maxItems && (
-        <div className="text-center py-4 text-sm text-slate-500">
+        <div className="py-4 text-center text-sm text-text-secondary">
           Showing {maxItems} of {filteredIssues.length} issues.
           {/* Could add a "Show All" button here */}
         </div>
@@ -356,19 +333,16 @@ export const DiagnosticList: React.FC<DiagnosticListProps> = ({
 // HELPER COMPONENTS
 // ============================================================================
 
-const SeverityIcon: React.FC<{ severity: string; size?: number }> = ({
-  severity,
-  size = 14,
-}) => {
+const SeverityIcon: React.FC<{ severity: string; size?: number }> = ({ severity, size = 14 }) => {
   switch (severity) {
     case 'Critical':
-      return <AlertCircle size={size} className="text-red-400" />;
+      return <AlertCircle size={size} className="text-status-error" />;
     case 'Major':
-      return <AlertTriangle size={size} className="text-orange-400" />;
+      return <AlertTriangle size={size} className="text-status-warning" />;
     case 'Minor':
-      return <AlertTriangle size={size} className="text-yellow-400" />;
+      return <AlertTriangle size={size} className="text-status-warning" />;
     default:
-      return <Info size={size} className="text-blue-400" />;
+      return <Info size={size} className="text-status-info" />;
   }
 };
 

@@ -50,19 +50,14 @@ export const LintAnalysisSection: React.FC<LintAnalysisSectionProps> = ({
   onFocusRegion,
 }) => {
   // Use the linter hook
-  const {
-    issues,
-    isLinting,
-    error,
-    overallScore,
-    counts,
-    result,
-    runLint,
-  } = useLinter(rawWorkflow, {
-    autoRun: true,
-    debounceMs: 300,
-    includeInfo: true,
-  });
+  const { issues, isLinting, error, overallScore, counts, result, runLint } = useLinter(
+    rawWorkflow,
+    {
+      autoRun: true,
+      debounceMs: 300,
+      includeInfo: true,
+    },
+  );
 
   // Get workflow summary for additional context
   const workflowSummary = useWorkflowSummary(rawWorkflow);
@@ -96,13 +91,13 @@ export const LintAnalysisSection: React.FC<LintAnalysisSectionProps> = ({
       icon={Bug}
       title="Workflow Linting"
       subtitle="Rule-based parameter analysis"
-      iconColorClass="bg-violet-500/10 text-violet-400 ring-violet-500/20"
+      iconColorClass="bg-accent-subtle text-status-info ring-accent/30"
       isLoading={false}
       headerRight={
         <div className="flex items-center gap-3">
           {/* Workflow Stats */}
           {workflowSummary && (
-            <div className="flex items-center gap-4 text-[10px] text-slate-500">
+            <div className="flex items-center gap-4 text-[10px] text-text-secondary">
               <span>{workflowSummary.nodeCount} nodes</span>
               <span>{workflowSummary.linkCount} connections</span>
             </div>
@@ -112,7 +107,7 @@ export const LintAnalysisSection: React.FC<LintAnalysisSectionProps> = ({
           <button
             onClick={runLint}
             disabled={isLinting}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-violet-500/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 rounded-button bg-accent px-4 py-2 text-xs font-semibold text-text shadow-subtle transition-colors hover:bg-accent-hover disabled:opacity-50"
             aria-label="Re-run workflow analysis"
           >
             <RefreshCw size={14} className={isLinting ? 'animate-spin' : ''} />
@@ -125,17 +120,17 @@ export const LintAnalysisSection: React.FC<LintAnalysisSectionProps> = ({
       {isLinting && issues.length === 0 && (
         <LoadingPlaceholder
           text="Analyzing workflow parameters..."
-          spinnerColorClass="text-violet-500/50"
+          spinnerColorClass="text-status-info"
         />
       )}
 
       {/* Error State */}
       {error && (
-        <div className="p-6 bg-red-500/10 rounded-xl border border-red-500/20">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="rounded-card border border-red-200 bg-red-50 p-6" role="alert">
+          <p className="text-sm text-status-error">{error}</p>
           <button
             onClick={runLint}
-            className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-bold transition-colors"
+            className="mt-4 rounded-button border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-status-error transition-colors hover:bg-red-100"
           >
             Try Again
           </button>
@@ -173,11 +168,11 @@ export const LintAnalysisSection: React.FC<LintAnalysisSectionProps> = ({
 
           {/* Offline Mode Notice */}
           {isOffline && issues.length > 0 && (
-            <div className="p-4 bg-indigo-500/5 rounded-xl border border-indigo-500/20">
-              <p className="text-xs text-indigo-300">
-                <strong>Offline Mode:</strong> Detailed educational content requires
-                an API key. Click &quot;Learn More&quot; on any issue to see explanations
-                once you&apos;ve configured your API key.
+            <div className="rounded-card border border-sky-200 bg-sky-50 p-4">
+              <p className="text-xs text-status-info">
+                <strong>Offline Mode:</strong> Detailed educational content requires an API key.
+                Click &quot;Learn More&quot; on any issue to see explanations once you&apos;ve
+                configured your API key.
               </p>
             </div>
           )}
@@ -218,15 +213,21 @@ export const LintStatusBadge: React.FC<{
         transition-all border
         ${
           isLinting
-            ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+            ? 'border-sky-200 bg-sky-50 text-status-info'
             : counts.errors > 0
-            ? 'bg-red-500/10 border-red-500/20 text-red-400'
-            : counts.warnings > 0
-            ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
-            : 'bg-green-500/10 border-green-500/20 text-green-400'
+              ? 'border-red-200 bg-red-50 text-status-error'
+              : counts.warnings > 0
+                ? 'border-amber-200 bg-amber-50 text-status-warning'
+                : 'border-green-200 bg-green-50 text-status-success'
         }
       `}
-      aria-label={`Lint status: ${totalIssues} issues`}
+      aria-label={
+        isLinting
+          ? 'Lint status: analyzing workflow'
+          : totalIssues > 0
+            ? `Lint status: ${counts.errors} errors and ${counts.warnings} warnings`
+            : 'Lint status: no issues found'
+      }
     >
       <Bug size={14} />
       {isLinting ? (

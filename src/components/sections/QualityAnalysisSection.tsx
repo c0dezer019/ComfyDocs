@@ -198,7 +198,7 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
       icon={AlertTriangle}
       title="Forensic Report"
       subtitle="Pixel-level artifact detection"
-      iconColorClass="bg-rose-500/10 text-rose-400 ring-rose-500/20"
+      iconColorClass="bg-accent-subtle text-accent ring-accent/30"
       isLoading={isLoading}
       headerRight={
         qualityAnalysis && (
@@ -215,7 +215,7 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
       }
     >
       {isLoading ? (
-        <LoadingPlaceholder text="Scanning artifacts..." spinnerColorClass="text-rose-500/50" />
+        <LoadingPlaceholder text="Scanning artifacts..." spinnerColorClass="text-accent" />
       ) : (
         qualityAnalysis && (
           <div className="space-y-4">
@@ -256,7 +256,7 @@ export const QualityAnalysisSection: React.FC<QualityAnalysisSectionProps> = ({
                 onClick={() =>
                   setNewIssue({ severity: 'Minor', score: 0.5, type: '', userNotes: '' })
                 }
-                className="w-full py-4 border-2 border-dashed border-white/5 rounded-2xl text-sm font-bold text-slate-500 hover:text-indigo-400 hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-3"
+                className="flex w-full items-center justify-center gap-3 rounded-card border-2 border-dashed border-border py-4 text-sm font-semibold text-text-secondary transition-colors hover:border-accent hover:bg-accent/5 hover:text-status-info"
               >
                 <Plus size={20} /> MANUALLY TAG ARTIFACT
               </button>
@@ -290,12 +290,9 @@ const ControlsBar: React.FC<ControlsBarProps> = ({
   onRunConsensus,
 }) => (
   <div className="flex flex-wrap items-center gap-4">
-    <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-      <Filter size={14} className="text-slate-500" aria-hidden="true" />
-      <label
-        htmlFor="confidence-threshold-slider"
-        className="text-[10px] font-black text-slate-400"
-      >
+    <div className="flex items-center gap-3 rounded-input border border-border bg-surface-muted px-4 py-2">
+      <Filter size={14} className="text-text-secondary" aria-hidden="true" />
+      <label htmlFor="confidence-threshold-slider" className="text-[10px] font-semibold text-text">
         {confidenceThreshold}% CONF
       </label>
       <input
@@ -305,7 +302,7 @@ const ControlsBar: React.FC<ControlsBarProps> = ({
         max="100"
         value={confidenceThreshold}
         onChange={(e) => onConfidenceChange(parseInt(e.target.value))}
-        className="w-20 h-1 bg-slate-700 rounded-full appearance-none cursor-pointer accent-indigo-500"
+        className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-border-muted accent-accent"
         aria-label="Confidence threshold filter"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -314,8 +311,8 @@ const ControlsBar: React.FC<ControlsBarProps> = ({
       />
     </div>
 
-    <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-      <Gauge size={14} className="text-slate-500" aria-hidden="true" />
+    <div className="flex items-center gap-3 rounded-input border border-border bg-surface-muted px-4 py-2">
+      <Gauge size={14} className="text-text-secondary" aria-hidden="true" />
       <label htmlFor="pass-count-select" className="sr-only">
         Number of analysis passes
       </label>
@@ -323,7 +320,7 @@ const ControlsBar: React.FC<ControlsBarProps> = ({
         id="pass-count-select"
         value={passCount}
         onChange={(e) => onPassCountChange(Number(e.target.value))}
-        className="bg-transparent text-[10px] font-black text-slate-300 uppercase tracking-widest outline-none border-none cursor-pointer"
+        className="cursor-pointer border-none bg-transparent text-[10px] font-semibold uppercase tracking-widest text-text outline-none"
         aria-label="Number of consensus analysis passes"
       >
         <option value="1">1 Pass</option>
@@ -335,7 +332,7 @@ const ControlsBar: React.FC<ControlsBarProps> = ({
     <button
       onClick={onRunConsensus}
       disabled={isRunningConsensus}
-      className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
+      className="flex items-center gap-2 rounded-button bg-accent px-6 py-2.5 text-xs font-semibold text-text shadow-card transition-colors hover:bg-accent-hover disabled:opacity-50"
     >
       {isRunningConsensus ? <Loader2 size={14} className="animate-spin" /> : <Target size={14} />}
       {isRunningConsensus ? 'AUDITING...' : 'RUN AUDIT'}
@@ -387,7 +384,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
   setEditingIssue,
   onFocusRegion,
 }) => (
-  <div className="bg-white/5 rounded-2xl border border-white/5 p-6 group/issue relative transition-all hover:bg-white/[0.08] hover:border-white/10">
+  <div className="group/issue relative min-w-0 rounded-card border border-border bg-surface p-4 shadow-subtle transition-colors hover:border-accent/30 sm:p-6">
     {isEditing && editingIssue ? (
       <IssueEditForm
         issue={editingIssue}
@@ -397,55 +394,57 @@ const IssueCard: React.FC<IssueCardProps> = ({
       />
     ) : (
       <div className="flex flex-col gap-4">
-        <div className="flex items-start gap-6">
-          <div className="flex flex-col gap-2 shrink-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+          <div className="flex shrink-0 flex-row gap-2 sm:flex-col">
             <div
-              className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border text-center ${getSeverityColor(issue.severity)}`}
+              className={`rounded-input border px-3 py-1 text-center text-[10px] font-semibold uppercase tracking-widest ${getSeverityColor(issue.severity)}`}
             >
               {issue.severity === 'Note' ? '—' : issue.severity}
             </div>
             {issue.confidence !== undefined && (
               <div
-                className={`px-3 py-1 rounded-lg text-[9px] font-mono border text-center ${getConfidenceColor(issue.confidence)}`}
+                className={`rounded-input border px-3 py-1 text-center font-mono text-[9px] ${getConfidenceColor(issue.confidence)}`}
               >
                 {issue.confidence}%
               </div>
             )}
           </div>
-          <div className="flex-1 pr-20">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-lg font-bold text-white tracking-tight">{issue.type}</span>
+          <div className="min-w-0 flex-1 sm:pr-20">
+            <div className="mb-2 flex flex-wrap items-center gap-3">
+              <span className="min-w-0 break-words text-lg font-semibold tracking-tight text-text">
+                {issue.type}
+              </span>
               {issue.box_2d && onFocusRegion && (
                 <button
                   onClick={onFocus}
-                  className="p-1.5 text-indigo-400 hover:text-white bg-indigo-500/10 hover:bg-indigo-600 rounded-lg transition-all"
+                  className="rounded-input bg-accent/10 p-1.5 text-accent transition-colors hover:bg-accent hover:text-text"
                   aria-label={`Focus on ${issue.type} region in image`}
                 >
                   <ScanEye size={14} aria-hidden="true" />
                 </button>
               )}
             </div>
-            <p className="text-slate-400 text-sm leading-relaxed">{issue.description}</p>
+            <p className="text-sm leading-relaxed text-text-secondary">{issue.description}</p>
           </div>
 
-          <div className="absolute top-6 right-6 flex gap-1 opacity-0 group-hover/issue:opacity-100 transition-opacity">
+          <div className="flex self-start gap-1 opacity-100 transition-opacity sm:absolute sm:top-6 sm:right-6 sm:opacity-0 sm:group-hover/issue:opacity-100 sm:group-focus-within/issue:opacity-100">
             <button
               onClick={onToggleNote}
-              className={`p-2 rounded-xl hover:bg-white/10 ${issue.userNotes ? 'text-indigo-400' : 'text-slate-500'}`}
+              className={`rounded-input p-2 transition-colors hover:bg-surface-muted ${issue.userNotes ? 'text-accent' : 'text-text-secondary'}`}
               aria-label={`${issue.userNotes ? 'View' : 'Add'} context note for ${issue.type}`}
             >
               <StickyNote size={16} aria-hidden="true" />
             </button>
             <button
               onClick={onStartEdit}
-              className="p-2 text-slate-500 hover:text-white rounded-xl hover:bg-white/10"
+              className="rounded-input p-2 text-text-secondary transition-colors hover:bg-surface-muted hover:text-text"
               aria-label={`Edit ${issue.type} issue`}
             >
               <Edit2 size={16} aria-hidden="true" />
             </button>
             <button
               onClick={onDelete}
-              className="p-2 text-slate-500 hover:text-red-400 rounded-xl hover:bg-white/10"
+              className="rounded-input p-2 text-text-secondary transition-colors hover:bg-surface-muted hover:text-status-error"
               aria-label={`Delete ${issue.type} issue`}
             >
               <Trash2 size={16} aria-hidden="true" />
@@ -479,10 +478,10 @@ interface IssueEditFormProps {
 }
 
 const IssueEditForm: React.FC<IssueEditFormProps> = ({ issue, onChange, onSave, onCancel }) => (
-  <div className="space-y-4">
-    <div className="flex gap-4">
+  <div className="min-w-0 space-y-4">
+    <div className="flex flex-col gap-4 sm:flex-row">
       <select
-        className="bg-slate-900 border border-white/10 rounded-xl text-xs font-bold uppercase text-slate-300 px-4 py-2"
+        className="w-full shrink-0 rounded-input border border-border bg-surface-muted px-4 py-2 text-xs font-semibold uppercase text-text sm:w-auto"
         value={issue.severity}
         onChange={(e) =>
           onChange({ ...issue, severity: e.target.value as QualityIssue['severity'] })
@@ -495,7 +494,7 @@ const IssueEditForm: React.FC<IssueEditFormProps> = ({ issue, onChange, onSave, 
       </select>
       <input
         type="text"
-        className="flex-1 bg-slate-900 border border-white/10 rounded-xl text-sm font-bold text-white px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500/30"
+        className="min-w-0 flex-1 rounded-input border border-border bg-surface-muted px-4 py-2 text-sm font-semibold text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         value={issue.type}
         onChange={(e) => onChange({ ...issue, type: e.target.value })}
       />
@@ -505,21 +504,21 @@ const IssueEditForm: React.FC<IssueEditFormProps> = ({ issue, onChange, onSave, 
     </label>
     <textarea
       id={`issue-description-${issue.id}`}
-      className="w-full bg-slate-900 border border-white/10 rounded-xl text-sm text-slate-300 px-4 py-4 min-h-[80px] outline-none"
+      className="min-h-[80px] w-full rounded-input border border-border bg-surface-muted px-4 py-4 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
       value={issue.description}
       onChange={(e) => onChange({ ...issue, description: e.target.value })}
       aria-label="Issue description"
     />
-    <div className="flex justify-end gap-3">
+    <div className="flex flex-wrap justify-end gap-3">
       <button
         onClick={onCancel}
-        className="px-6 py-2 text-xs font-bold text-slate-500 hover:text-white uppercase tracking-wider"
+        className="px-6 py-2 text-xs font-semibold uppercase tracking-wider text-text-secondary hover:text-text"
       >
         Cancel
       </button>
       <button
         onClick={onSave}
-        className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg uppercase tracking-wider"
+        className="rounded-button bg-accent px-8 py-2 text-xs font-semibold uppercase tracking-wider text-text shadow-card hover:bg-accent-hover"
       >
         Save Changes
       </button>
@@ -550,15 +549,15 @@ const NoteSection: React.FC<NoteSectionProps> = ({
   onSave,
   onChange,
 }) => (
-  <div className="ml-10 p-5 bg-black/40 border-l-4 border-indigo-500/50 rounded-r-2xl text-sm animate-in slide-in-from-top-2">
-    <div className="flex items-center justify-between mb-3">
-      <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+  <div className="ml-0 min-w-0 rounded-r-card border-l-4 border-accent bg-surface-muted p-4 text-sm sm:ml-10 sm:p-5">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-text">
         <StickyNote size={12} aria-hidden="true" /> Researcher Context
       </div>
       {!isEditing && (
         <button
           onClick={onStartEdit}
-          className="text-[10px] font-bold text-slate-500 hover:text-indigo-300 uppercase"
+          className="text-[10px] font-semibold uppercase text-text-secondary hover:text-status-info"
         >
           Edit
         </button>
@@ -571,25 +570,28 @@ const NoteSection: React.FC<NoteSectionProps> = ({
         </label>
         <textarea
           id={`user-note-${issueId}`}
-          className="w-full bg-slate-900 border border-white/5 rounded-xl text-sm text-slate-200 p-4 min-h-[100px] outline-none"
+          className="min-h-[100px] w-full rounded-input border border-border bg-surface p-4 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           value={tempContent}
           onChange={(e) => onChange(e.target.value)}
           aria-label={`Context note for ${issueType}`}
         />
-        <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="text-[10px] font-black text-slate-500 uppercase">
+        <div className="flex flex-wrap justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="text-[10px] font-semibold uppercase text-text-secondary hover:text-text"
+          >
             Cancel
           </button>
           <button
             onClick={onSave}
-            className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase"
+            className="rounded-button bg-accent px-4 py-1.5 text-[10px] font-semibold uppercase text-text hover:bg-accent-hover"
           >
             Save Note
           </button>
         </div>
       </div>
     ) : (
-      <p className="italic text-slate-400 leading-relaxed">
+      <p className="italic leading-relaxed text-text-secondary">
         {userNotes || 'No context added yet.'}
       </p>
     )}
@@ -604,17 +606,15 @@ interface NewIssueFormProps {
 }
 
 const NewIssueForm: React.FC<NewIssueFormProps> = ({ newIssue, onChange, onAdd, onCancel }) => (
-  <div className="bg-indigo-500/5 rounded-3xl border border-dashed border-indigo-500/30 p-8 space-y-4 animate-in zoom-in-95">
-    <h4 className="text-sm font-black text-indigo-300 uppercase tracking-widest">
-      New Manual Entry
-    </h4>
-    <div className="flex gap-4">
+  <div className="min-w-0 space-y-4 rounded-card border border-dashed border-accent/40 bg-accent/5 p-4 sm:p-8">
+    <h4 className="text-sm font-semibold uppercase tracking-widest text-text">New Manual Entry</h4>
+    <div className="flex flex-col gap-4 sm:flex-row">
       <label htmlFor="new-issue-severity" className="sr-only">
         Severity level
       </label>
       <select
         id="new-issue-severity"
-        className="bg-slate-950 border border-white/10 rounded-xl text-xs font-bold text-slate-300 px-4"
+        className="w-full shrink-0 rounded-input border border-border bg-surface px-4 py-3 text-xs font-semibold text-text sm:w-auto"
         value={newIssue.severity || 'Minor'}
         onChange={(e) =>
           onChange({ ...newIssue, severity: e.target.value as QualityIssue['severity'] })
@@ -632,7 +632,7 @@ const NewIssueForm: React.FC<NewIssueFormProps> = ({ newIssue, onChange, onAdd, 
         id="new-issue-type"
         type="text"
         placeholder="Artifact Type..."
-        className="flex-1 bg-slate-950 border border-white/10 rounded-xl text-sm text-white px-5 py-3 outline-none"
+        className="min-w-0 flex-1 rounded-input border border-border bg-surface px-5 py-3 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         value={newIssue.type || ''}
         onChange={(e) => onChange({ ...newIssue, type: e.target.value })}
       />
@@ -643,17 +643,20 @@ const NewIssueForm: React.FC<NewIssueFormProps> = ({ newIssue, onChange, onAdd, 
     <textarea
       id="new-issue-description"
       placeholder="Observation details..."
-      className="w-full bg-slate-950 border border-white/10 rounded-xl text-sm text-slate-300 px-5 py-4 min-h-[100px] outline-none"
+      className="min-h-[100px] w-full rounded-input border border-border bg-surface px-5 py-4 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
       value={newIssue.description || ''}
       onChange={(e) => onChange({ ...newIssue, description: e.target.value })}
     />
-    <div className="flex justify-end gap-4">
-      <button onClick={onCancel} className="text-xs font-bold text-slate-500 uppercase">
+    <div className="flex flex-wrap justify-end gap-4">
+      <button
+        onClick={onCancel}
+        className="text-xs font-semibold uppercase text-text-secondary hover:text-text"
+      >
         Discard
       </button>
       <button
         onClick={onAdd}
-        className="px-8 py-3 bg-white text-slate-900 rounded-full text-xs font-black uppercase shadow-xl hover:scale-105 transition-transform"
+        className="rounded-button bg-accent px-8 py-3 text-xs font-semibold uppercase text-text shadow-card transition-colors hover:bg-accent-hover"
       >
         Add & Audit
       </button>

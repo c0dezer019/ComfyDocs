@@ -78,15 +78,18 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
   }, []);
 
   // Handle focus region with annotation
-  const handleFocusRegion = useCallback((box: [number, number, number, number]) => {
-    if (onFocusRegion) {
-      onFocusRegion({
-        label: 'Highlighted Region',
-        box_2d: box,
-        style: 'box',
-      });
-    }
-  }, [onFocusRegion]);
+  const handleFocusRegion = useCallback(
+    (box: [number, number, number, number]) => {
+      if (onFocusRegion) {
+        onFocusRegion({
+          label: 'Highlighted Region',
+          box_2d: box,
+          style: 'box',
+        });
+      }
+    },
+    [onFocusRegion],
+  );
 
   // Handler for updating backstory
   const handleUpdateBackstory = (backstory: string) => {

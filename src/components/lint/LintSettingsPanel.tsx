@@ -60,9 +60,9 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: React.ReactNode }> 
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  error: 'text-red-400 bg-red-500/10 border-red-500/30',
-  warning: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
-  info: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+  error: 'border-red-200 bg-red-50 text-status-error',
+  warning: 'border-amber-200 bg-amber-50 text-status-warning',
+  info: 'border-sky-200 bg-sky-50 text-status-info',
 };
 
 // ============================================================================
@@ -189,19 +189,19 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-violet-500/10 rounded-lg text-violet-400">
+          <div className="rounded-icon bg-accent-subtle p-2 text-status-info">
             <Bug size={20} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Lint Rules Configuration</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="text-sm font-semibold text-text">Lint Rules Configuration</h3>
+            <p className="text-xs text-text-secondary">
               {ruleStats?.total || builtinRules.length} rules available
             </p>
           </div>
         </div>
         <button
           onClick={handleResetDefaults}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          className="flex items-center gap-2 rounded-button px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-muted hover:text-text"
         >
           <RefreshCw size={12} />
           Reset to Defaults
@@ -209,22 +209,22 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
       </div>
 
       {/* Global Settings */}
-      <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-4">
-        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+      <div className="space-y-4 rounded-card border border-border bg-surface p-4 shadow-subtle">
+        <h4 className="text-xs font-bold uppercase tracking-widest text-text-secondary">
           Global Settings
         </h4>
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-sm text-white">Include Info Diagnostics</span>
-            <p className="text-xs text-slate-500">
+            <span className="text-sm text-text">Include Info Diagnostics</span>
+            <p className="text-xs text-text-secondary">
               Show informational suggestions alongside warnings and errors
             </p>
           </div>
           <button
             onClick={toggleIncludeInfo}
             className={`p-1 rounded-lg transition-colors ${
-              config.includeInfo ? 'text-indigo-400' : 'text-slate-600'
+              config.includeInfo ? 'text-status-info' : 'text-text-muted'
             }`}
             aria-pressed={config.includeInfo}
           >
@@ -235,7 +235,7 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
 
       {/* Rules by Category */}
       <div className="space-y-2">
-        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+        <h4 className="text-xs font-bold uppercase tracking-widest text-text-secondary">
           Rules by Category
         </h4>
 
@@ -252,27 +252,23 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
           return (
             <div
               key={category}
-              className="bg-white/5 rounded-xl border border-white/5 overflow-hidden"
+              className="overflow-hidden rounded-card border border-border bg-surface shadow-subtle"
             >
               {/* Category Header */}
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
+                className="flex cursor-pointer items-center justify-between p-4 transition-colors hover:bg-surface-muted"
                 onClick={() => toggleCategory(category)}
               >
                 <div className="flex items-center gap-3">
                   <button
-                    className="text-slate-500"
+                    className="rounded-button text-text-secondary"
                     aria-expanded={state.expanded}
                   >
-                    {state.expanded ? (
-                      <ChevronDown size={16} />
-                    ) : (
-                      <ChevronRight size={16} />
-                    )}
+                    {state.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </button>
-                  <span className="text-slate-400">{categoryInfo.icon}</span>
-                  <span className="text-sm font-bold text-white">{categoryInfo.label}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-text-secondary">{categoryInfo.icon}</span>
+                  <span className="text-sm font-semibold text-text">{categoryInfo.label}</span>
+                  <span className="text-xs text-text-secondary">
                     ({enabledCount}/{rules.length} enabled)
                   </span>
                 </div>
@@ -282,7 +278,7 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
                     toggleCategoryEnabled(category);
                   }}
                   className={`p-1 rounded-lg transition-colors ${
-                    state.allEnabled ? 'text-indigo-400' : 'text-slate-600'
+                    state.allEnabled ? 'text-status-info' : 'text-text-muted'
                   }`}
                   aria-label={`Toggle all ${categoryInfo.label} rules`}
                 >
@@ -292,27 +288,25 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
 
               {/* Rules List */}
               {state.expanded && (
-                <div className="border-t border-white/5 divide-y divide-white/5">
+                <div className="divide-y divide-border border-t border-border">
                   {rules.map((rule) => {
                     const enabled = isRuleEnabled(rule);
                     const SeverityIcon =
                       rule.severity === 'error'
                         ? AlertCircle
                         : rule.severity === 'warning'
-                        ? AlertTriangle
-                        : Info;
+                          ? AlertTriangle
+                          : Info;
 
                     return (
                       <div
                         key={rule.id}
-                        className={`p-4 flex items-start gap-4 ${
-                          enabled ? '' : 'opacity-50'
-                        }`}
+                        className={`p-4 flex items-start gap-4 ${enabled ? '' : 'opacity-50'}`}
                       >
                         <button
                           onClick={() => toggleRule(rule.id, enabled)}
                           className={`mt-0.5 p-0.5 rounded transition-colors ${
-                            enabled ? 'text-indigo-400' : 'text-slate-600'
+                            enabled ? 'text-status-info' : 'text-text-muted'
                           }`}
                           aria-label={`${enabled ? 'Disable' : 'Enable'} ${rule.name}`}
                         >
@@ -320,7 +314,7 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
                         </button>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-white">{rule.name}</span>
+                            <span className="text-sm font-medium text-text">{rule.name}</span>
                             <span
                               className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${
                                 SEVERITY_COLORS[rule.severity]
@@ -330,13 +324,13 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
                               {rule.severity}
                             </span>
                             {'isGlobal' in rule && rule.isGlobal && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-violet-500/10 text-violet-400 border border-violet-500/30">
+                              <span className="rounded border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-status-info">
                                 Global
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 mt-1">{rule.rationale}</p>
-                          <code className="text-[10px] text-slate-600 font-mono mt-1 block">
+                          <p className="mt-1 text-xs text-text-secondary">{rule.rationale}</p>
+                          <code className="mt-1 block font-mono text-[10px] text-text-muted">
                             {rule.id}
                           </code>
                         </div>
@@ -352,20 +346,20 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
 
       {/* Cache Management */}
       {showCacheManagement && (
-        <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-4">
-          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+        <div className="space-y-4 rounded-card border border-border bg-surface p-4 shadow-subtle">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-text-secondary">
             Education Cache
           </h4>
 
           {cacheStats && (
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-slate-500">Cached Entries</span>
-                <span className="text-white ml-2">{cacheStats.totalEntries}</span>
+                <span className="text-text-secondary">Cached Entries</span>
+                <span className="ml-2 text-text">{cacheStats.totalEntries}</span>
               </div>
               <div>
-                <span className="text-slate-500">Rules with Cache</span>
-                <span className="text-white ml-2">
+                <span className="text-text-secondary">Rules with Cache</span>
+                <span className="ml-2 text-text">
                   {Object.keys(cacheStats.entriesByRule).length}
                 </span>
               </div>
@@ -375,12 +369,12 @@ export const LintSettingsPanel: React.FC<LintSettingsPanelProps> = ({
           <button
             onClick={handleClearCache}
             disabled={isClearingCache}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 rounded-button border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-status-error transition-colors hover:bg-red-100 disabled:opacity-50"
           >
             <Trash2 size={14} />
             {isClearingCache ? 'Clearing...' : 'Clear Education Cache'}
           </button>
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-text-muted">
             Educational content is cached for 7 days. Clear to refresh explanations.
           </p>
         </div>

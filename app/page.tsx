@@ -40,6 +40,8 @@ import {
   SceneNote,
 } from '@/lib/types';
 import { initializeLintSystem } from '@/utils/lintBootstrap';
+import { assetPath } from '@/lib/assetPath';
+import { LegalFooter } from '@/components/LegalFooter';
 
 export default function HomePage() {
   const [processingState, setProcessingState] = useState<ProcessingState>({ status: 'idle' });
@@ -70,8 +72,8 @@ export default function HomePage() {
   // Helper to safely extract messages from unknown errors
   const getErrorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-  // Demo URL for Next.js public folder
-  const demoUrl = '/demo.png';
+  // Demo URL for Next.js public folder (base-path aware for static export)
+  const demoUrl = assetPath('/demo.png');
 
   // Check for landing page state on mount (client-side only)
   useEffect(() => {
@@ -575,38 +577,36 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen text-slate-200 flex flex-col font-sans selection:bg-indigo-500/30">
-      <header className="glass sticky top-0 z-50 border-b border-white/5 no-print">
-        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+    <div className="flex min-h-screen flex-col bg-page font-sans text-text selection:bg-accent-subtle">
+      <header className="sticky top-0 z-50 border-b border-border bg-page no-print">
+        <div className="mx-auto flex min-h-16 max-w-[var(--page-max-width)] flex-col items-start gap-3 px-4 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0">
           <button
             type="button"
             aria-label="New analysis"
             onClick={resetState}
-            className="flex items-center gap-3 rounded group focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="group flex items-center gap-3 rounded focus:outline-none"
           >
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-300">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="rounded-icon bg-accent p-2 text-text">
+              <Sparkles className="size-5" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-white">ComfyDocs</h1>
+            <h1 className="font-heading text-xl font-semibold tracking-tight text-text">
+              ComfyDocs
+            </h1>
           </button>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <button
               onClick={
                 hasEncryptedKey && !localApiKey
                   ? () => setIsUnlockModalOpen(true)
                   : handleOpenSettings
               }
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${localApiKey ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:border-white/20'}`}
+              className={`flex items-center gap-2 rounded-button border px-4 py-2 text-sm font-medium transition-colors ${localApiKey ? 'border-status-success/30 bg-status-success/10 text-status-success' : 'border-border bg-surface text-text-secondary hover:border-accent hover:text-status-info'}`}
             >
-              {localApiKey ? (
-                <Key size={12} className="text-emerald-400" />
-              ) : (
-                <Settings size={12} />
-              )}
+              {localApiKey ? <Key size={14} /> : <Settings size={14} />}
               {localApiKey ? 'API ACTIVE' : hasEncryptedKey ? 'UNLOCK KEY' : 'SETUP API'}
             </button>
             {isLoadedFromCache && (
-              <span className="ml-2 text-xs font-black px-2 py-0.5 rounded-full bg-indigo-600/20 text-indigo-200">
+              <span className="rounded-button bg-accent-subtle px-2.5 py-1 text-xs font-medium text-text sm:ml-2">
                 CACHED
               </span>
             )}
@@ -614,10 +614,13 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main id="main-content" className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-8">
+      <main
+        id="main-content"
+        className="mx-auto w-full max-w-[var(--page-max-width)] flex-1 px-4 py-8 sm:px-6"
+      >
         {errorMessage && (
-          <div className="max-w-[1600px] mx-auto px-6 mb-4">
-            <div className="bg-rose-600/10 border border-rose-500/20 text-rose-300 text-sm rounded px-4 py-2">
+          <div className="mx-auto mb-4 max-w-[var(--page-max-width)]">
+            <div className="rounded-input border border-status-error/30 bg-status-error/10 px-4 py-2 text-sm text-status-error">
               {errorMessage}
             </div>
           </div>
@@ -633,7 +636,7 @@ export default function HomePage() {
         {showLanding ? (
           <Landing onGetStarted={handleGetStarted} onTryDemo={startDemo} demoUrl={demoUrl} />
         ) : !previewUrl ? (
-          <div className="flex flex-col items-center max-w-2xl mx-auto pt-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="mx-auto flex max-w-3xl flex-col pt-12 sm:pt-20">
             <div
               role="button"
               tabIndex={0}
@@ -643,32 +646,32 @@ export default function HomePage() {
                   fileInputRef.current?.click();
                 }
               }}
-              className="w-full glass-card rounded-3xl p-12 flex flex-col items-center justify-center text-center hover:border-indigo-500/50 cursor-pointer group relative"
+              className="group relative flex w-full cursor-pointer flex-col border border-dashed border-border bg-surface p-8 text-left shadow-card transition-colors hover:border-accent sm:p-12"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
               {processingState.status !== 'idle' && (
-                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center gap-4 z-10">
-                  <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-200">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-surface/95">
+                  <Loader2 className="size-10 animate-spin text-accent" />
+                  <p className="text-sm font-medium text-text">
                     {processingState.message || 'Processing...'}
                   </p>
                 </div>
               )}
-              <div className="w-24 h-24 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ring-1 ring-white/10">
-                <Upload className="w-10 h-10 text-indigo-400" />
+              <div className="mb-6 flex size-12 items-center justify-center rounded-icon bg-accent-subtle text-accent-hover">
+                <Upload className="size-6" />
               </div>
-              <h2 className="text-3xl font-extrabold text-white mb-4 tracking-tight">
+              <h2 className="font-heading text-3xl font-semibold tracking-tight text-text">
                 Drop your generation
               </h2>
-              <p className="text-slate-400 max-w-sm text-lg font-light leading-relaxed">
+              <p className="mt-3 max-w-md text-base leading-7 text-text-secondary">
                 Recover your ComfyUI workflow and start a forensic audit.
               </p>
             </div>
             <button
               onClick={startDemo}
-              className="mt-6 text-sm text-slate-500 hover:text-indigo-400 transition-colors font-medium"
+              className="mt-5 w-fit text-sm font-medium text-text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-status-info hover:decoration-accent"
             >
               Or explore the sample guitarist generation
             </button>
@@ -676,18 +679,18 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
             <div className="lg:col-span-3 flex flex-col gap-6 lg:sticky lg:top-24 no-print">
-              <div className="glass-card rounded-2xl p-4">
-                <div className="aspect-square relative rounded-xl overflow-hidden bg-slate-950/50 flex items-center justify-center group/preview ring-1 ring-white/5">
+              <div className="rounded-card border border-border bg-surface p-4 shadow-preview">
+                <div className="aspect-square relative flex items-center justify-center overflow-hidden rounded-card bg-surface-muted group/preview ring-1 ring-border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewUrl}
                     alt="ComfyUI Generation"
                     className="max-w-full max-h-full object-contain"
                   />
-                  <div className="absolute top-3 right-3 opacity-0 group-hover/preview:opacity-100 transition-opacity z-10">
+                  <div className="absolute top-3 right-3 z-10 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/preview:opacity-100 sm:group-focus-within/preview:opacity-100">
                     <button
                       onClick={() => handleOpenImagePreview()}
-                      className="p-2.5 bg-black/70 hover:bg-black text-white rounded-xl backdrop-blur-md border border-white/10"
+                      className="rounded-button border border-surface-inverted bg-surface-inverted p-2.5 text-text-inverse transition-colors hover:bg-text"
                       aria-label="Open full-size image viewer with annotations"
                     >
                       <ZoomIn size={18} aria-hidden="true" />
@@ -697,7 +700,7 @@ export default function HomePage() {
                 <div className="mt-5 flex items-center justify-between px-1">
                   <button
                     onClick={resetState}
-                    className="text-xs font-bold text-slate-500 hover:text-slate-300 flex items-center gap-1.5 transition-colors tracking-wider"
+                    className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-text-secondary transition-colors hover:text-text"
                   >
                     <ArrowLeft size={14} /> NEW ANALYSIS
                   </button>
@@ -708,7 +711,7 @@ export default function HomePage() {
             <div className="lg:col-span-9 flex flex-col">
               {processingState.status === 'complete' && analysisResult && metadata && (
                 <>
-                  <nav className="flex gap-1 mb-8 bg-white/5 p-1 rounded-2xl w-fit shrink-0 backdrop-blur-sm ring-1 ring-white/10 no-print">
+                  <nav className="mb-8 flex w-fit shrink-0 gap-1 rounded-card border border-border bg-surface p-1 shadow-subtle no-print">
                     <TabButton
                       active={activeTab === 'docs'}
                       onClick={() => setActiveTab('docs')}
@@ -723,7 +726,7 @@ export default function HomePage() {
                     />
                   </nav>
 
-                  <div className="w-full animate-in fade-in slide-in-from-top-4 duration-700">
+                  <div className="w-full">
                     {activeTab === 'docs' && (
                       <DocumentationViewer
                         data={analysisResult.data}
@@ -754,6 +757,8 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      <LegalFooter />
 
       <SettingsModal
         isOpen={isSettingsOpen}
@@ -793,7 +798,7 @@ const TabButton = ({
 }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+    className={`flex items-center gap-2 rounded-button px-5 py-2 text-xs font-semibold tracking-wider transition-colors ${active ? 'bg-surface-inverted text-text-inverse shadow-subtle' : 'text-text-secondary hover:bg-surface-muted hover:text-text'}`}
   >
     {icon}
     {label}

@@ -19,7 +19,7 @@ export const ParametersGrid: React.FC<ParametersGridProps> = ({ parameters }) =>
       icon={Sliders}
       title="Technical Profile"
       subtitle="Hyperparameter extraction"
-      iconColorClass="bg-amber-500/10 text-amber-400 ring-amber-500/20"
+      iconColorClass="bg-accent-subtle text-accent ring-accent/30"
       showHeaderBorder
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -38,11 +38,11 @@ interface ParameterCardProps {
 }
 
 const ParameterCard: React.FC<ParameterCardProps> = ({ label, value }) => (
-  <div className="bg-black/30 p-5 rounded-2xl border border-white/5 shadow-inner group/param hover:border-amber-500/30 transition-all">
-    <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover/param:text-amber-500/60 transition-colors">
+  <div className="group/param rounded-card border border-border bg-surface-muted p-5 shadow-subtle transition-colors hover:border-accent/50">
+    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary transition-colors group-hover/param:text-accent">
       {label}
     </div>
-    <div className="text-sm font-mono text-slate-200 break-all bg-slate-950/50 p-2.5 rounded-xl ring-1 ring-white/5">
+    <div className="break-all rounded-input border border-border bg-surface p-2.5 font-mono text-sm text-text">
       {String(value)}
     </div>
   </div>

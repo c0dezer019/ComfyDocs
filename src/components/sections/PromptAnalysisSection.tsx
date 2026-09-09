@@ -69,15 +69,16 @@ export const PromptAnalysisSection: React.FC<PromptAnalysisSectionProps> = ({
       icon={Wand2}
       title="Prompt Audit"
       subtitle="Linguistic adherence scoring"
-      iconColorClass="bg-purple-500/10 text-purple-400 ring-purple-500/20"
+      iconColorClass="bg-accent-subtle text-accent ring-accent/30"
       isLoading={isLoading}
       showHeaderBorder
       headerRight={
         promptAnalysis && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
             <button
               onClick={onRefreshPromptAnalysis}
-              className="p-2.5 text-slate-500 hover:text-white rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
+              className="rounded-input p-2.5 text-text-secondary opacity-100 transition-colors hover:bg-surface-muted hover:text-status-info sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 sm:focus-visible:opacity-100"
+              aria-label="Refresh prompt analysis"
             >
               <RefreshCw size={20} />
             </button>
@@ -92,19 +93,16 @@ export const PromptAnalysisSection: React.FC<PromptAnalysisSectionProps> = ({
     >
       {/* Refining overlay */}
       {isRefiningPrompt && (
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-30 flex flex-col items-center justify-center gap-4 rounded-3xl">
-          <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-200">
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 rounded-card bg-surface/95">
+          <Loader2 className="h-10 w-10 animate-spin text-accent" />
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text">
             Revising Prompt Theory...
           </p>
         </div>
       )}
 
       {isLoading ? (
-        <LoadingPlaceholder
-          text="Analyzing prompt structure..."
-          spinnerColorClass="text-purple-500/50"
-        />
+        <LoadingPlaceholder text="Analyzing prompt structure..." spinnerColorClass="text-accent" />
       ) : (
         promptAnalysis && (
           <div className="grid md:grid-cols-2 gap-10">
@@ -154,12 +152,12 @@ const CritiqueSection: React.FC<CritiqueSectionProps> = ({
 }) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
-      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+      <h3 className="text-[10px] font-semibold uppercase tracking-[0.3em] text-text-secondary">
         Theoretical Critique
       </h3>
       <button
         onClick={onStartEdit}
-        className="text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300"
+        className="text-[10px] font-semibold uppercase tracking-widest text-status-info hover:text-text"
       >
         Edit
       </button>
@@ -167,27 +165,27 @@ const CritiqueSection: React.FC<CritiqueSectionProps> = ({
     {isEditing ? (
       <div className="space-y-4">
         <textarea
-          className="w-full bg-slate-900 border border-white/5 rounded-2xl p-5 text-sm text-slate-300 min-h-[180px] outline-none"
+          className="min-h-[180px] w-full rounded-card border border-border bg-surface-muted p-5 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           value={editedCritique}
           onChange={(e) => onCritiqueChange(e.target.value)}
         />
         <div className="flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="text-[10px] font-black text-slate-500 uppercase px-4"
+            className="px-4 text-[10px] font-semibold uppercase text-text-secondary hover:text-text"
           >
             Cancel
           </button>
           <button
             onClick={onSave}
-            className="px-6 py-2 bg-white text-slate-900 rounded-full text-[10px] font-black uppercase tracking-widest"
+            className="rounded-button bg-accent px-6 py-2 text-[10px] font-semibold uppercase tracking-widest text-text hover:bg-accent-hover"
           >
             Update Critique
           </button>
         </div>
       </div>
     ) : (
-      <div className="p-6 bg-black/30 rounded-2xl border border-white/5 text-slate-300 text-sm leading-relaxed shadow-inner">
+      <div className="rounded-card border border-border bg-surface-muted p-6 text-sm leading-relaxed text-text-secondary shadow-subtle">
         {critique}
       </div>
     )}
@@ -212,7 +210,7 @@ const RefinementsSection: React.FC<RefinementsSectionProps> = ({
   onNewImprovementChange,
 }) => (
   <div className="space-y-4">
-    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+    <h3 className="text-[10px] font-semibold uppercase tracking-[0.3em] text-text-secondary">
       Technical Refinements
     </h3>
     <ul className="space-y-3">
@@ -222,14 +220,14 @@ const RefinementsSection: React.FC<RefinementsSectionProps> = ({
         return (
           <li
             key={issue.id || `issue-${issueIdx}`}
-            className="p-5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl animate-in slide-in-from-right-4 duration-500"
+            className="rounded-card border border-accent/20 bg-accent/5 p-5"
           >
             <div className="flex items-center gap-3 mb-3">
               <div
-                className={`w-1.5 h-1.5 rounded-full ${issue.severity === 'Note' ? 'bg-slate-400' : 'bg-rose-400'}`}
+                className={`h-1.5 w-1.5 rounded-full ${issue.severity === 'Note' ? 'bg-text-muted' : 'bg-status-error'}`}
               />
               <span
-                className={`text-[10px] font-black uppercase tracking-widest ${issue.severity === 'Note' ? 'text-slate-400' : 'text-rose-300'}`}
+                className={`text-[10px] font-semibold uppercase tracking-widest ${issue.severity === 'Note' ? 'text-text-secondary' : 'text-status-error'}`}
               >
                 {issue.type}
               </span>
@@ -237,8 +235,8 @@ const RefinementsSection: React.FC<RefinementsSectionProps> = ({
             <div className="space-y-2 pl-4">
               {fixes.map((fix, fIdx) => (
                 <div key={fIdx} className="flex items-start gap-3">
-                  <ArrowRight size={12} className="text-indigo-500 mt-1 shrink-0" />
-                  <span className="text-sm text-slate-200 font-medium">{fix}</span>
+                  <ArrowRight size={12} className="mt-1 shrink-0 text-accent" />
+                  <span className="text-sm font-medium text-text-secondary">{fix}</span>
                 </div>
               ))}
             </div>
@@ -249,13 +247,14 @@ const RefinementsSection: React.FC<RefinementsSectionProps> = ({
       {improvements.map((tip, idx) => (
         <li
           key={`gen-${idx}`}
-          className="group/item flex items-start gap-4 p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] transition-all"
+          className="group/item flex items-start gap-4 rounded-card border border-border bg-surface-muted p-5 transition-colors hover:border-accent/30"
         >
-          <Sparkles size={14} className="text-indigo-400 mt-1 shrink-0" />
-          <span className="text-sm text-slate-300 leading-relaxed flex-1">{tip}</span>
+          <Sparkles size={14} className="mt-1 shrink-0 text-accent" />
+          <span className="flex-1 text-sm leading-relaxed text-text-secondary">{tip}</span>
           <button
             onClick={() => onDeleteImprovement(idx)}
-            className="opacity-0 group-hover/item:opacity-100 p-1.5 text-slate-600 hover:text-red-400 transition-all"
+            className="p-1.5 text-text-muted opacity-100 transition-colors hover:text-status-error sm:opacity-0 sm:group-hover/item:opacity-100 sm:group-focus-within/item:opacity-100 sm:focus-visible:opacity-100"
+            aria-label="Delete improvement"
           >
             <X size={14} />
           </button>
@@ -270,7 +269,7 @@ const RefinementsSection: React.FC<RefinementsSectionProps> = ({
           id="new-improvement-input"
           type="text"
           placeholder="Add observation..."
-          className="flex-1 bg-slate-950 border border-white/5 rounded-xl px-5 py-3 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/30"
+          className="flex-1 rounded-input border border-border bg-surface px-5 py-3 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           value={newImprovement}
           onChange={(e) => onNewImprovementChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onAddImprovement()}
@@ -279,7 +278,7 @@ const RefinementsSection: React.FC<RefinementsSectionProps> = ({
         <button
           onClick={onAddImprovement}
           disabled={!newImprovement.trim()}
-          className="p-3.5 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-500 disabled:opacity-50 transition-all"
+          className="rounded-input bg-accent p-3.5 text-text shadow-card transition-colors hover:bg-accent-hover disabled:opacity-50"
           aria-label="Add improvement suggestion"
         >
           <Plus size={18} aria-hidden="true" />
