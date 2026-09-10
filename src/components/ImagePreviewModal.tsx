@@ -20,7 +20,7 @@ import {
   screenToNormalized as screenToNormalizedPure,
   calculateCreationBox,
   calculateFocusViewport,
-  calculateLeaderLinePoints,
+  calculateAnnotationLabelPlacements,
 } from '@/utils/annotationGeometry';
 import { getAnnotationColor, getStrokeWidth } from '@/utils/annotationStyles';
 
@@ -139,6 +139,21 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
   // Filter annotations based on visibility toggles
   const activeAnnotations = annotations.filter((_, idx) => visibleAnnotations.has(idx));
+
+  const labelPlacements = React.useMemo(
+    () =>
+      imageLoaded && imgDims.w > 0
+        ? calculateAnnotationLabelPlacements(
+            activeAnnotations.map((annotation) => ({
+              box: annotation.box_2d,
+              label: annotation.label,
+              labelRotation: annotation.labelRotation,
+            })),
+            imgDims,
+          )
+        : [],
+    [activeAnnotations, imageLoaded, imgDims],
+  );
 
   const toggleAnnotation = (idx: number) => {
     // Exit focus mode when manually toggling annotations
@@ -920,10 +935,19 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                   // Color priority: selected (success) > hovered (accent) > focused (error) > default (info)
                   const color = getAnnotationColor(isSelected, isHovered, !!isFocused);
 
-                  // Calculate leader line positioning
-                  const isRightSide = (xmin + xmax) / 2 > 0.5;
-                  const { originX, originY, destX, destY, shoulderEndX, textX, dirX, dirY } =
-                    calculateLeaderLinePoints(ann.box_2d, imgDims, ann.labelRotation, isRightSide);
+                  const placement = labelPlacements[idx];
+                  if (!placement) return null;
+                  const {
+                    originX,
+                    originY,
+                    destX,
+                    destY,
+                    shoulderEndX,
+                    textX,
+                    isRightSide,
+                    dirX,
+                    dirY,
+                  } = placement;
 
                   // Box center and half-dimensions (needed for rotate handle)
                   const cx = x + width / 2;
@@ -938,6 +962,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                       style={{ pointerEvents: 'auto' }}
                       onMouseEnter={() => canEdit && setHoveredAnnotationIdx(realIdx)}
                       onMouseLeave={() => setHoveredAnnotationIdx(null)}
+                      onClick={(e) => handleAnnotationClick(e, realIdx)}
                     >
                       {/* Bounding Box */}
                       <rect
@@ -957,7 +982,6 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                         vectorEffect="non-scaling-stroke"
                         style={{ cursor: canEdit ? 'pointer' : 'default' }}
                         className={`annotation-control ${isFocused ? 'animate-pulse' : ''}`}
-                        onClick={(e) => handleAnnotationClick(e, realIdx)}
                       />
 
                       {/* Leader Line (no transform - positions are pre-calculated with rotation) */}
@@ -1010,8 +1034,9 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                           }}
                           className="annotation-control"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            if (canEdit) startEditLabel(realIdx);
+                            if (!canEdit) return;
+                            handleAnnotationClick(e, realIdx);
+                            startEditLabel(realIdx);
                           }}
                         >
                           {ann.label.toUpperCase()}

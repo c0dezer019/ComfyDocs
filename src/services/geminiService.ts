@@ -3,6 +3,8 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { SceneDocumentation, PromptAnalysis, QualityIssue, Annotation } from '@/lib/types';
 
+const GEMINI_PRO_MODEL = 'gemini-3.1-pro-preview';
+
 // Helper to get effective API key from Session Storage (Decrypted by App)
 const getApiKey = (): string => {
   if (typeof window === 'undefined') return '';
@@ -195,7 +197,7 @@ export const generateSceneDocumentation = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: GEMINI_PRO_MODEL,
       contents: {
         parts: [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }, { text: prompt }],
       },
@@ -291,7 +293,7 @@ export const runConsensusQualityAnalysis = async (
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: GEMINI_PRO_MODEL,
     contents: {
       parts: [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }, { text: judgePrompt }],
     },
@@ -575,7 +577,7 @@ export const askQuestion = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: GEMINI_PRO_MODEL,
       contents: {
         parts: [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }, { text: prompt }],
       },

@@ -23,6 +23,8 @@ import {
   getCachedEducationBatch,
 } from '@/utils/educationCache';
 
+const GEMINI_FLASH_MODEL = 'gemini-3.6-flash';
+
 // ============================================================================
 // API KEY MANAGEMENT
 // ============================================================================
@@ -60,15 +62,18 @@ const educationResponseSchema = {
         },
         technicalContext: {
           type: Type.STRING,
-          description: 'Technical explanation of why this matters (diffusion process, model architecture, etc.)',
+          description:
+            'Technical explanation of why this matters (diffusion process, model architecture, etc.)',
         },
         visualImpact: {
           type: Type.STRING,
-          description: 'What visual artifacts or quality issues the user might see if this is not addressed',
+          description:
+            'What visual artifacts or quality issues the user might see if this is not addressed',
         },
         exceptions: {
           type: Type.STRING,
-          description: 'Scenarios where this setting might be intentional (artistic choice, specific workflow, etc.)',
+          description:
+            'Scenarios where this setting might be intentional (artistic choice, specific workflow, etc.)',
         },
       },
       required: ['issue', 'technicalContext', 'visualImpact'],
@@ -192,7 +197,7 @@ const batchEducationResponseSchema = {
  * @returns Structured educational content
  */
 export async function generateEducationalContent(
-  request: EducationRequest
+  request: EducationRequest,
 ): Promise<EducationalContent> {
   const { diagnostic, workflowContext } = request;
 
@@ -223,7 +228,7 @@ export async function generateEducationalContent(
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: GEMINI_FLASH_MODEL,
       contents: {
         parts: [{ text: prompt }],
       },
@@ -262,7 +267,7 @@ export async function generateEducationalContent(
       })),
       resources: parsed.resources || [],
       generatedAt: Date.now(),
-      modelUsed: 'gemini-2.0-flash',
+      modelUsed: GEMINI_FLASH_MODEL,
     };
 
     // Cache the result
@@ -288,7 +293,7 @@ export async function generateEducationalContent(
 function buildEducationPrompt(
   diagnostic: LintDiagnostic,
   workflowContext: EducationRequest['workflowContext'],
-  modelFamily: string
+  modelFamily: string,
 ): string {
   return `
 Role: Expert ComfyUI and Stable Diffusion educator. Your goal is to help users understand
@@ -309,17 +314,25 @@ NODE INFORMATION:
 DIAGNOSTIC MESSAGE:
 ${diagnostic.message}
 
-${diagnostic.offendingParameter ? `
+${
+  diagnostic.offendingParameter
+    ? `
 OFFENDING PARAMETER:
 - Name: ${diagnostic.offendingParameter.name}
 - Current Value: ${JSON.stringify(diagnostic.offendingParameter.value)}
 ${diagnostic.offendingParameter.validRange ? `- Valid Range: ${diagnostic.offendingParameter.validRange.min} - ${diagnostic.offendingParameter.validRange.max}` : ''}
-` : ''}
+`
+    : ''
+}
 
-${diagnostic.suggestedFix ? `
+${
+  diagnostic.suggestedFix
+    ? `
 INITIAL SUGGESTION:
 ${diagnostic.suggestedFix.description}
-` : ''}
+`
+    : ''
+}
 
 WORKFLOW CONTEXT:
 - Sampler: ${workflowContext.samplerType || 'Unknown'}
@@ -368,7 +381,7 @@ Explain the "why" before the "how".
  */
 export async function generateBatchEducationSummaries(
   diagnostics: LintDiagnostic[],
-  workflowContext: EducationRequest['workflowContext']
+  workflowContext: EducationRequest['workflowContext'],
 ): Promise<Map<string, { summary: string; topFix: string }>> {
   const results = new Map<string, { summary: string; topFix: string }>();
 
@@ -380,7 +393,7 @@ export async function generateBatchEducationSummaries(
     generateEducationKey(d.ruleId, d.nodeType, {
       samplerType: workflowContext.samplerType,
       modelFamily,
-    })
+    }),
   );
 
   const cached = await getCachedEducationBatch(cacheKeys);
@@ -415,12 +428,16 @@ export async function generateBatchEducationSummaries(
   const ai = new GoogleGenAI({ apiKey });
 
   // Build batch prompt
-  const diagnosticsSummary = uncached.map((d, i) => `
+  const diagnosticsSummary = uncached
+    .map(
+      (d, i) => `
 ${i + 1}. Rule: ${d.ruleId}
    Node: ${d.nodeType}
    Message: ${d.message}
    ${d.offendingParameter ? `Parameter: ${d.offendingParameter.name} = ${JSON.stringify(d.offendingParameter.value)}` : ''}
-`).join('\n');
+`,
+    )
+    .join('\n');
 
   const batchPrompt = `
 Role: ComfyUI educator providing quick explanations for multiple lint issues.
@@ -441,7 +458,7 @@ Be concise - this is for quick reference. Full explanations are available separa
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: GEMINI_FLASH_MODEL,
       contents: {
         parts: [{ text: batchPrompt }],
       },
@@ -455,7 +472,7 @@ Be concise - this is for quick reference. Full explanations are available separa
     if (response.text) {
       const parsed = JSON.parse(response.text);
 
-      for (const exp of (parsed.explanations || [])) {
+      for (const exp of parsed.explanations || []) {
         results.set(exp.ruleId, {
           summary: exp.summary,
           topFix: exp.topFix?.title || 'See detailed analysis',
@@ -486,7 +503,7 @@ Be concise - this is for quick reference. Full explanations are available separa
 export async function generateVisualEducation(
   diagnostic: LintDiagnostic,
   imageBase64: string,
-  workflowContext: EducationRequest['workflowContext']
+  workflowContext: EducationRequest['workflowContext'],
 ): Promise<EducationalContent> {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -494,11 +511,10 @@ export async function generateVisualEducation(
   }
 
   const modelFamily = detectModelFamily(workflowContext.modelName);
-  const contentKey = generateEducationKey(
-    `visual-${diagnostic.ruleId}`,
-    diagnostic.nodeType,
-    { samplerType: workflowContext.samplerType, modelFamily }
-  );
+  const contentKey = generateEducationKey(`visual-${diagnostic.ruleId}`, diagnostic.nodeType, {
+    samplerType: workflowContext.samplerType,
+    modelFamily,
+  });
 
   // Visual explanations are not cached as they're image-specific
   const ai = new GoogleGenAI({ apiKey });
@@ -530,12 +546,9 @@ Be specific about what you see in THIS image, not generic advice.
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: GEMINI_FLASH_MODEL,
       contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/png', data: imageBase64 } },
-          { text: prompt },
-        ],
+        parts: [{ inlineData: { mimeType: 'image/png', data: imageBase64 } }, { text: prompt }],
       },
       config: {
         temperature: 0.3,
@@ -559,7 +572,7 @@ Be specific about what you see in THIS image, not generic advice.
       fixes: parsed.fixes || [],
       resources: parsed.resources || [],
       generatedAt: Date.now(),
-      modelUsed: 'gemini-2.0-flash',
+      modelUsed: GEMINI_FLASH_MODEL,
     };
   } catch (error) {
     const err = error as { message?: string };
@@ -581,7 +594,8 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
   // SAMPLING RULES
   // ============================================================================
   'sampling/cfg-too-high': {
-    summary: 'High CFG forces strict prompt adherence but causes oversaturation and "burnt" colors.',
+    summary:
+      'High CFG forces strict prompt adherence but causes oversaturation and "burnt" colors.',
     topFix: 'Lower CFG to 7-12 for balanced prompt following without artifacts.',
   },
   'sampling/cfg-too-low': {
@@ -602,14 +616,17 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
   },
   'sampling/denoise-low': {
     summary: 'Very low denoise makes minimal changes - the model barely affects the image.',
-    topFix: 'Increase denoise to 0.3+ for noticeable changes, or remove the sampler if no changes are wanted.',
+    topFix:
+      'Increase denoise to 0.3+ for noticeable changes, or remove the sampler if no changes are wanted.',
   },
   'sampling/sampler-scheduler-mismatch': {
-    summary: 'Some sampler/scheduler combinations work poorly together, causing artifacts or slow convergence.',
+    summary:
+      'Some sampler/scheduler combinations work poorly together, causing artifacts or slow convergence.',
     topFix: 'Use Euler with Normal, DPM++ 2M with Karras, or UniPC with Beta for optimal results.',
   },
   'sampling/seed-control-mismatch': {
-    summary: 'Using fixed seed with randomization node defeats the purpose of deterministic generation.',
+    summary:
+      'Using fixed seed with randomization node defeats the purpose of deterministic generation.',
     topFix: 'Remove the randomization node or use -1 seed for intentional variation.',
   },
 
@@ -637,7 +654,8 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
     topFix: 'Limit to 2-3 LoRAs and lower individual strengths when combining.',
   },
   'model/clip-skip': {
-    summary: 'CLIP Skip affects how prompts are interpreted - wrong values for your model cause issues.',
+    summary:
+      'CLIP Skip affects how prompts are interpreted - wrong values for your model cause issues.',
     topFix: 'Use CLIP Skip 1 for SD1.5, CLIP Skip 2 for anime models, 1 for SDXL.',
   },
   'workflow/no-sampler': {
@@ -645,7 +663,7 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
     topFix: 'Add a KSampler or KSamplerAdvanced node to perform the generation.',
   },
   'workflow/sampler-disconnected': {
-    summary: 'Sampler is not connected to output - generated images won\'t be saved or displayed.',
+    summary: "Sampler is not connected to output - generated images won't be saved or displayed.",
     topFix: 'Connect the sampler output to a VAE Decode and then to a Save/Preview node.',
   },
 
@@ -666,7 +684,8 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
   },
   'prompt/too-long': {
     summary: 'CLIP truncates prompts beyond 77 tokens - later content may be ignored.',
-    topFix: 'Prioritize important concepts at the start, or use CLIP text encoding with multiple segments.',
+    topFix:
+      'Prioritize important concepts at the start, or use CLIP text encoding with multiple segments.',
   },
   'prompt/problematic-pattern': {
     summary: 'Some prompt patterns (doubled words, conflicting styles) confuse the model.',
@@ -677,8 +696,8 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
     topFix: 'Keep weights between 0.8-1.4 for natural-looking emphasis.',
   },
   'prompt/conditioning-disconnected': {
-    summary: 'Conditioning is created but not connected - the model won\'t receive prompt guidance.',
-    topFix: 'Connect the conditioning output to the sampler\'s positive/negative inputs.',
+    summary: "Conditioning is created but not connected - the model won't receive prompt guidance.",
+    topFix: "Connect the conditioning output to the sampler's positive/negative inputs.",
   },
 
   // ============================================================================
@@ -721,9 +740,7 @@ const QUICK_TIPS: Record<string, { summary: string; topFix: string }> = {
  * @param ruleId - The rule ID to get a tip for
  * @returns Quick tip or undefined if not available
  */
-export function getQuickTip(
-  ruleId: string
-): { summary: string; topFix: string } | undefined {
+export function getQuickTip(ruleId: string): { summary: string; topFix: string } | undefined {
   return QUICK_TIPS[ruleId];
 }
 
@@ -733,9 +750,7 @@ export function getQuickTip(
  * @param ruleIds - Array of rule IDs
  * @returns Map of ruleId to quick tip
  */
-export function getQuickTips(
-  ruleIds: string[]
-): Map<string, { summary: string; topFix: string }> {
+export function getQuickTips(ruleIds: string[]): Map<string, { summary: string; topFix: string }> {
   const results = new Map<string, { summary: string; topFix: string }>();
 
   for (const ruleId of ruleIds) {

@@ -114,14 +114,14 @@ All Gemini API interactions go through this service:
 
 **`generateSceneDocumentation()`** - Main analysis pipeline
 
-- Model: `gemini-3-pro-preview`
+- Model: `gemini-3.1-pro-preview`
 - Takes base64 image + workflow/prompt JSON
 - Returns structured `SceneDocumentation` with scene overview, quality analysis, prompt adherence scoring
 
 **`runConsensusQualityAnalysis()`** - Multi-pass quality verification
 
 - Runs N parallel passes with `gemini-3-flash-preview` (faster)
-- Judge pass consolidation with `gemini-3-pro-preview` (smarter)
+- Judge pass consolidation with `gemini-3.1-pro-preview` (smarter)
 - Calculates confidence percentages based on issue recurrence across passes
 - Assigns spatial bounding boxes to issues
 

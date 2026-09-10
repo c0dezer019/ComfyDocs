@@ -145,7 +145,7 @@ export const Landing: React.FC<LandingProps> = ({ onGetStarted, onTryDemo, demoU
           Forensic stack
         </h2>
         <div className="flex flex-col gap-5 text-sm text-text-secondary sm:flex-row sm:flex-wrap sm:gap-x-10 sm:gap-y-4">
-          <StackItem icon={<Cpu className="size-4" aria-hidden="true" />} label="Gemini 3.0 Pro" />
+          <StackItem icon={<Cpu className="size-4" aria-hidden="true" />} label="Gemini 3.1 Pro" />
           <StackItem
             icon={<Database className="size-4" aria-hidden="true" />}
             label="IndexedDB Persistence"

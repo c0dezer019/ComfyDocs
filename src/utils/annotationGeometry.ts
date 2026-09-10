@@ -137,3 +137,129 @@ export function calculateLeaderLinePoints(
     dirY,
   };
 }
+
+export interface AnnotationLabelPlacement {
+  isRightSide: boolean;
+  rotation: number;
+  originX: number;
+  originY: number;
+  destX: number;
+  destY: number;
+  shoulderEndX: number;
+  textX: number;
+  dirX: number;
+  dirY: number;
+  labelBounds: { left: number; top: number; right: number; bottom: number };
+}
+
+type LabelPlacementInput = {
+  box: [number, number, number, number];
+  label: string;
+  labelRotation?: number;
+};
+
+type Bounds = { left: number; top: number; right: number; bottom: number };
+
+const rectanglesOverlap = (a: Bounds, b: Bounds, padding = 0): boolean =>
+  a.left < b.right + padding &&
+  a.right > b.left - padding &&
+  a.top < b.bottom + padding &&
+  a.bottom > b.top - padding;
+
+/**
+ * Pick a label position that does not cover another annotation or a label
+ * that has already been placed. SVG text has no layout box, so we use a
+ * conservative monospace estimate for collision testing.
+ */
+export function calculateAnnotationLabelPlacements(
+  annotations: LabelPlacementInput[],
+  imgDims: { w: number; h: number },
+): AnnotationLabelPlacement[] {
+  const maxDimension = Math.max(imgDims.w, imgDims.h);
+  const fontSize = maxDimension * 0.02;
+  const labelHeight = fontSize * 1.5;
+  const collisionPadding = maxDimension * 0.008;
+  const annotationBounds: Bounds[] = annotations.map(({ box }) => {
+    const [ymin, xmin, ymax, xmax] = box;
+    return {
+      left: xmin * imgDims.w,
+      top: ymin * imgDims.h,
+      right: xmax * imgDims.w,
+      bottom: ymax * imgDims.h,
+    };
+  });
+
+  const placedLabels: Bounds[] = [];
+
+  return annotations.map((annotation, index) => {
+    const [ymin, xmin, ymax, xmax] = annotation.box;
+    const centerX = (xmin + xmax) / 2;
+    const preferredRightSide = centerX > 0.5;
+    const requestedRotation = annotation.labelRotation ?? 0;
+    const textWidth = Math.max(fontSize * 2, annotation.label.length * fontSize * 0.63);
+    const candidates = [
+      { isRightSide: preferredRightSide, rotation: requestedRotation, preference: 0 },
+      { isRightSide: !preferredRightSide, rotation: requestedRotation, preference: 1 },
+      { isRightSide: preferredRightSide, rotation: 0, preference: 2 },
+      { isRightSide: preferredRightSide, rotation: 55, preference: 3 },
+      { isRightSide: preferredRightSide, rotation: -55, preference: 3 },
+      { isRightSide: !preferredRightSide, rotation: 0, preference: 4 },
+      { isRightSide: !preferredRightSide, rotation: 55, preference: 5 },
+      { isRightSide: !preferredRightSide, rotation: -55, preference: 5 },
+      { isRightSide: preferredRightSide, rotation: 110, preference: 6 },
+      { isRightSide: !preferredRightSide, rotation: -110, preference: 7 },
+    ];
+
+    const annotationCandidates = annotationBounds.filter(
+      (_, candidateIndex) => candidateIndex !== index,
+    );
+    const scored = candidates.map((candidate) => {
+      const points = calculateLeaderLinePoints(
+        annotation.box,
+        imgDims,
+        candidate.rotation,
+        candidate.isRightSide,
+      );
+      const left = candidate.isRightSide ? points.textX - textWidth : points.textX;
+      const bounds: Bounds = {
+        left,
+        top: points.destY - labelHeight / 2,
+        right: left + textWidth,
+        bottom: points.destY + labelHeight / 2,
+      };
+      const boundaryCollisions = annotationCandidates.filter((other) =>
+        rectanglesOverlap(bounds, other, collisionPadding),
+      ).length;
+      const labelCollisions = placedLabels.filter((other) =>
+        rectanglesOverlap(bounds, other, collisionPadding),
+      ).length;
+      const outsideImage =
+        Math.max(0, -bounds.left) +
+        Math.max(0, -bounds.top) +
+        Math.max(0, bounds.right - imgDims.w) +
+        Math.max(0, bounds.bottom - imgDims.h);
+
+      return {
+        ...candidate,
+        points,
+        bounds,
+        score:
+          boundaryCollisions * 10000 +
+          labelCollisions * 5000 +
+          outsideImage * 10 +
+          candidate.preference,
+      };
+    });
+
+    scored.sort((a, b) => a.score - b.score);
+    const best = scored[0];
+    placedLabels.push(best.bounds);
+
+    return {
+      ...best.points,
+      isRightSide: best.isRightSide,
+      rotation: best.rotation,
+      labelBounds: best.bounds,
+    };
+  });
+}

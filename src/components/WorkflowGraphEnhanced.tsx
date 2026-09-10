@@ -546,7 +546,7 @@ export const WorkflowGraphEnhanced: React.FC<WorkflowGraphEnhancedProps> = ({
 
       {/* Focused Node Info */}
       {focusedNodeId !== null && focusedNodeId !== undefined && (
-        <div className="absolute right-4 bottom-4 rounded-input border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-text">
+        <div className="absolute right-4 bottom-16 rounded-input border border-accent/30 bg-accent/10 px-3 py-2 text-xs text-text">
           Focused: Node #{focusedNodeId}
         </div>
       )}
